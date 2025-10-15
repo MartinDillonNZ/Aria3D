@@ -1,0 +1,2303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Audio Navigation System - Enhanced v2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            overflow: hidden;
+        }
+
+        #canvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        .left-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            bottom: 120px;
+            width: 220px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #4c6ef5;
+            font-size: 0.9em;
+            overflow-y: auto;
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+        }
+
+        button {
+            background: #4c6ef5;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 3px;
+            font-size: 0.85em;
+            font-weight: bold;
+            width: calc(100% - 6px);
+        }
+
+        button:hover {
+            background: #364fc7;
+        }
+
+        button.active {
+            background: #28a745;
+        }
+
+        .bottom-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            height: 90px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 2px solid #4c6ef5;
+            display: flex;
+            align-items: center;
+            font-size: 0.9em;
+        }
+
+        .bottom-left {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .bottom-center {
+            flex: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-left: 1px solid #4c6ef5;
+            border-right: 1px solid #4c6ef5;
+            padding: 0 20px;
+        }
+
+        .bottom-right {
+            flex: 1;
+            text-align: right;
+        }
+
+        .status-item {
+            margin: 2px 0;
+            font-size: 0.9em;
+        }
+
+        .status-item span {
+            color: #4c6ef5;
+            font-weight: bold;
+        }
+
+        .object-list {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .object-item {
+            padding: 5px 10px;
+            background: rgba(76, 110, 245, 0.2);
+            border-radius: 5px;
+            border-left: 3px solid #4c6ef5;
+            font-size: 0.85em;
+            white-space: nowrap;
+        }
+
+        .object-item.visible {
+            border-left-color: #28a745;
+            background: rgba(40, 167, 69, 0.2);
+        }
+
+        .object-item.proximity {
+            border-left-color: #ffc107;
+            background: rgba(255, 193, 7, 0.2);
+        }
+
+        .crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .crosshair::before,
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .crosshair::before {
+            top: 50%;
+            left: -10px;
+            right: -10px;
+            height: 1px;
+            transform: translateY(-50%);
+        }
+
+        .crosshair::after {
+            left: 50%;
+            top: -10px;
+            bottom: -10px;
+            width: 1px;
+            transform: translateX(-50%);
+        }
+
+        .key {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #4c6ef5;
+            border-radius: 3px;
+            margin: 0 2px;
+            font-weight: bold;
+            font-size: 0.85em;
+        }
+
+        .control-keys {
+            margin-top: 10px;
+            line-height: 1.4;
+        }
+
+        .control-keys div {
+            margin: 3px 0;
+        }
+
+        .proximity-info {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #4c6ef5;
+        }
+
+        .proximity-info h4 {
+            color: #ffc107;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .proximity-item {
+            font-size: 0.8em;
+            margin: 2px 0;
+            color: #aaa;
+        }
+
+        .proximity-item.warning {
+            color: #ffc107;
+        }
+
+        .proximity-item.danger {
+            color: #ff6b6b;
+        }
+
+        .hud {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 10px 15px;
+            border-radius: 5px;
+            border: 1px solid #4c6ef5;
+            font-family: monospace;
+            font-size: 0.85em;
+        }
+
+        .hud-item {
+            margin: 3px 0;
+            color: #4c6ef5;
+        }
+
+        .sky-info {
+            position: absolute;
+            top: 120px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 10px 15px;
+            border-radius: 5px;
+            border: 1px solid #4c6ef5;
+            font-size: 0.85em;
+        }
+
+        .sky-item {
+            margin: 3px 0;
+            font-size: 0.9em;
+        }
+
+        .sky-item span {
+            color: #ffc107;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div class="crosshair"></div>
+
+    <div class="left-panel">
+        <div class="control-group">
+            <button onclick="startAudio()" id="startBtn">▶ Start Audio</button>
+            <button onclick="stopAudio()">⏹ Stop Audio</button>
+        </div>
+        
+        <div class="control-keys">
+            <div><span class="key">W</span> Forward</div>
+            <div><span class="key">S</span> Backward</div>
+            <div><span class="key">A</span> Left</div>
+            <div><span class="key">D</span> Right</div>
+            <div><span class="key">←→</span> Turn</div>
+            <div><span class="key">Shift</span> Run</div>
+        </div>
+
+        <div class="proximity-info">
+            <h4>⚠️ Proximity Alerts</h4>
+            <div id="proximityList">
+                <div class="proximity-item">No nearby objects</div>
+            </div>
+        </div>
+
+        <div class="control-keys" style="margin-top: 15px;">
+            <h4 style="color: #4c6ef5; margin-bottom: 5px;">Weather Controls</h4>
+            <div><span class="key">1</span> Clear</div>
+            <div><span class="key">2</span> Wind</div>
+            <div><span class="key">3</span> Rain</div>
+            <div><span class="key">4</span> Storm</div>
+            <h4 style="color: #ffc107; margin: 10px 0 5px 0;">Sky Items</h4>
+            <div><span class="key">5</span> Day/Night (Sun)</div>
+            <div><span class="key">6</span> Clouds</div>
+        </div>
+    </div>
+
+    <div class="bottom-panel">
+        <div class="bottom-left">
+            <div class="status-item">Position: <span id="position">X:0 Y:1.6 Z:0</span></div>
+            <div class="status-item">Rotation: <span id="rotation">0°</span></div>
+            <div class="status-item">Bar: <span id="barNumber">1/32</span></div>
+            <div class="status-item">Speed: <span id="speedValue">0</span> m/min</div>
+        </div>
+        
+        <div class="bottom-center">
+            <div class="object-list" id="objectList"></div>
+        </div>
+        
+        <div class="bottom-right">
+            <div class="status-item">FOV Objects: <span id="visibleCount">0</span></div>
+            <div class="status-item">Proximity: <span id="proximityCount">0</span></div>
+            <div style="font-size: 0.8em; color: #aaa; margin-top: 5px;">
+                🟢 Visible | 🟡 Near | ⚫ Hidden
+            </div>
+        </div>
+    </div>
+
+    <div class="hud">
+        <div class="hud-item">Bar: <span id="hudBar">1/32</span></div>
+        <div class="hud-item">Move: <span id="hudMove">STOP</span></div>
+        <div class="hud-item">FOV: <span id="hudFOV">0/5</span></div>
+        <div class="hud-item">FPS: <span id="hudFPS">60</span></div>
+    </div>
+
+    <div class="sky-info">
+        <div class="status-item">Weather: <span id="skyStatus">Clear</span></div>
+        <div class="status-item">Surface: <span id="surfaceStatus">None</span></div>
+        <div class="sky-item">Time: <span id="timeStatus">Day</span></div>
+        <div class="sky-item">Clouds: <span id="cloudStatus">None</span></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <script>
+// Global state object
+const state = {
+    scene: null,
+    camera: null,
+    renderer: null,
+    sceneObjects: [],
+    keys: {},
+    mouseX: 0,
+    mouseY: 0,
+    cameraYaw: 0,
+    cameraPitch: 0,
+    isAudioRunning: false,
+    currentBar: 1,
+    bassDrum: null,
+    userVelocity: 0,
+    lastPosition: null,
+    lastTime: Date.now(),
+    clock: null,
+    beatTimeouts: [],
+    tomDrums: {},
+    proximityStates: {},
+    proximitySchedule: {},
+    nextBeatTime: 0,
+    // Named audio buses
+    masterLimiter: null,
+    masterCompressor: null,
+    melodicBus: null,
+    percussionBus: null,
+    proximityBus: null,
+    surfaceBus: null,
+    skyBus: null,
+    skyFilter: null,
+    frameCount: 0,
+    lastFPSUpdate: 0,
+    lastPercussionUpdate: 0,
+    terrain: [],
+    surfaces: [],
+    wallDistance: 10,
+    surfacePercussion: {},
+    skyConditions: {},
+    currentSkyState: 'clear',
+    skyTransitioning: false,
+    hazards: [],
+    dropHazardState: {
+        pattern: null,
+        currentZone: null,
+        lastUpdate: 0
+    },
+    // New: Sky melodic items
+    skyItems: {
+        sun: null,
+        stars: null,  // Removed - no musical indicator for nighttime
+        clouds: null,
+        currentTime: 'day',
+        sunPosition: { azimuth: 0, elevation: 45 },
+        cloudPresence: false
+    },
+    // New: Ramp visual state
+    rampVisuals: {
+        currentColor: 0x00ff00,
+        isTraversing: false,
+        lastRampPosition: null,
+        lastPercussionTime: 0,
+        rampDotsMaterial: null,
+        rampLinesMaterial: null
+    }
+};
+
+// Tom pattern pool (beat positions within bar)
+const TOM_PATTERN_POOL = [
+    { id: 'A', beats: [0, 2] },        // Beats 1 and 3
+    { id: 'B', beats: [1, 3] },        // Beats 2 and 4  
+    { id: 'C', beats: [0.5, 2.5] },    // Off-beats after 1 and 3
+    { id: 'D', beats: [1.5, 3.5] }     // Off-beats after 2 and 4
+];
+
+// Configuration object
+const CONFIG = {
+    MAX_OBJECTS: 20,
+    MASTER_LIMITER_DB: -8,
+    COMPRESSOR_THRESHOLD: -18,
+    COMPRESSOR_RATIO: 8,
+    BASS_DRUM_VOLUME: -15,
+    MELODY_BASE_VOLUME: -12,
+    TOM_BASE_VOLUME: -10,
+    RANDOM_SEED: 12345,
+    BPM: 130,
+    TIME_SIGNATURE: [4, 4],
+    PROXIMITY_NEAR: 3,
+    PROXIMITY_TOUCH: 0.5,
+    FLOOR_BASE: 0,
+    CAMERA_HEIGHT: 1.6,
+    RAMP_HEIGHT: 2,
+    SURFACE_PERCUSSION_VOLUME: -20,
+    EDGE_DETECTION_DISTANCE: 3,
+    PERCUSSION_UPDATE_RATE: 250,
+    SKY_MIN_VOLUME: -24,
+    SKY_MAX_VOLUME: -18
+};
+
+// Bar notes configuration
+const BAR_NOTES = {
+    1: ['C', 'E', 'G', 'A'], 2: ['D', 'E', 'G', 'B'], 3: ['C', 'E', 'G', 'A'], 4: ['C', 'D', 'F', 'A'],
+    5: ['C', 'E', 'G', 'A'], 6: ['D', 'E', 'G', 'B'], 7: ['C', 'E', 'G', 'A'], 8: ['C', 'D', 'F', 'A'],
+    9: ['C', 'E', 'G', 'A'], 10: ['D', 'E', 'G', 'B'], 11: ['C', 'E', 'G', 'A'], 12: ['C', 'D', 'F', 'A'],
+    13: ['C', 'E', 'G', 'A'], 14: ['D', 'E', 'G', 'B'], 15: ['C', 'E', 'G', 'A'], 16: ['C', 'D', 'F', 'A'],
+    17: ['C', 'E', 'G', 'A'], 18: ['D', 'E', 'G', 'B'], 19: ['C', 'E', 'G', 'A'], 20: ['C', 'D', 'F', 'A'],
+    21: ['C', 'E', 'G', 'A'], 22: ['D', 'E', 'G', 'B'], 23: ['C', 'E', 'G', 'A'], 24: ['C', 'D', 'F', 'A'],
+    25: ['C', 'E', 'G', 'A'], 26: ['D', 'E', 'G', 'B'], 27: ['C', 'E', 'G', 'A'], 28: ['C', 'D', 'F', 'A'],
+    29: ['C', 'E', 'G', 'A'], 30: ['D', 'E', 'G', 'B'], 31: ['C', 'E', 'G', 'A'], 32: ['C', 'D', 'F', 'A']
+};
+
+// Initialize Three.js
+function initThree() {
+    state.scene = new THREE.Scene();
+    state.scene.fog = new THREE.Fog(0x1a1a2e, 1, 50);
+    
+    state.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    state.camera.position.set(0, CONFIG.CAMERA_HEIGHT, 0);
+    
+    state.renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+    state.renderer.setSize(window.innerWidth, window.innerHeight);
+    state.renderer.setClearColor(0x1a1a2e);
+    
+    const ambientLight = new THREE.AmbientLight(0x404040);
+    state.scene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    directionalLight.position.set(1, 1, 0.5);
+    state.scene.add(directionalLight);
+    
+    const roomGeometry = new THREE.BoxGeometry(20, 8, 20);
+    const roomEdges = new THREE.EdgesGeometry(roomGeometry);
+    const roomMaterial = new THREE.LineBasicMaterial({ color: 0x4c6ef5, opacity: 0.3, transparent: true });
+    const roomWireframe = new THREE.LineSegments(roomEdges, roomMaterial);
+    roomWireframe.position.y = 4;
+    state.scene.add(roomWireframe);
+    
+    const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+    state.scene.add(gridHelper);
+    
+    state.lastPosition = new THREE.Vector3(0, CONFIG.CAMERA_HEIGHT, 0);
+    state.clock = new THREE.Clock();
+    
+    createTerrain();
+    createFloorSurfaces();
+    state.lastPercussionUpdate = 0;
+}
+
+// Create terrain features with dynamic ramp visuals
+function createTerrain() {
+    // Create ramp (incline/decline based on approach)
+    const rampGeometry = new THREE.BoxGeometry(4, 0.1, 6);
+    const rampMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x1a1a2e,
+        transparent: true,
+        opacity: 0
+    });
+    const ramp = new THREE.Mesh(rampGeometry, rampMaterial);
+    
+    // Position ramp and rotate for incline
+    ramp.position.set(5, 1, -5);
+    ramp.rotation.x = -Math.atan2(CONFIG.RAMP_HEIGHT, 6);
+    ramp.userData = { type: 'ramp', baseY: 0, topY: CONFIG.RAMP_HEIGHT };
+    state.scene.add(ramp);
+    
+    // Visual representation with dots
+    const rampDots = [];
+    for (let i = 0; i < 600; i++) {
+        const x = (Math.random() - 0.5) * 4;
+        const z = (Math.random() - 0.5) * 6;
+        rampDots.push(x, 0.05, z);
+    }
+    const rampDotsGeom = new THREE.BufferGeometry();
+    rampDotsGeom.setAttribute('position', new THREE.Float32BufferAttribute(rampDots, 3));
+    const rampDotsMat = new THREE.PointsMaterial({ 
+        color: 0x00ff00, 
+        size: 0.05,
+        opacity: 0.3,
+        transparent: true
+    });
+    // Store material reference for dynamic color changes
+    state.rampVisuals.rampDotsMaterial = rampDotsMat;
+    
+    const rampPoints = new THREE.Points(rampDotsGeom, rampDotsMat);
+    rampPoints.position.copy(ramp.position);
+    rampPoints.rotation.copy(ramp.rotation);
+    state.scene.add(rampPoints);
+    
+    // Ramp edges
+    const rampEdges = new THREE.EdgesGeometry(rampGeometry);
+    const rampLinesMaterial = new THREE.LineBasicMaterial({ 
+        color: 0x00ff00, 
+        opacity: 0.5, 
+        transparent: true 
+    });
+    // Store material reference for dynamic color changes
+    state.rampVisuals.rampLinesMaterial = rampLinesMaterial;
+    
+    const rampLines = new THREE.LineSegments(rampEdges, rampLinesMaterial);
+    rampLines.position.copy(ramp.position);
+    rampLines.rotation.copy(ramp.rotation);
+    state.scene.add(rampLines);
+    
+    // Create hole with barrier
+    const holeGeometry = new THREE.BoxGeometry(3, 2, 3);
+    const holeMaterial = new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        transparent: true,
+        opacity: 0
+    });
+    const hole = new THREE.Mesh(holeGeometry, holeMaterial);
+    hole.position.set(-7, -1, 7);
+    hole.userData = { type: 'hole', depth: -2 };
+    state.scene.add(hole);
+    
+    // Visual representation for hole
+    const holeEdges = new THREE.EdgesGeometry(holeGeometry);
+    const holeLines = new THREE.LineSegments(
+        holeEdges,
+        new THREE.LineBasicMaterial({ color: 0xff0000, opacity: 0.7, transparent: true })
+    );
+    holeLines.position.copy(hole.position);
+    state.scene.add(holeLines);
+    
+    // Store terrain objects for collision detection
+    state.terrain.push(ramp, hole);
+    
+    // Store hole as hazard for drop percussion warning
+    state.hazards.push({
+        type: 'drop',
+        position: hole.position,
+        size: { x: 3, z: 3 },
+        depth: 2
+    });
+}
+
+// Create floor surfaces (4 panels with different types)
+function createFloorSurfaces() {
+    const surfaceTypes = [
+        { type: 'road', x: -5, z: -5, color: 0x333333 },   // NW - dark grey
+        { type: 'path', x: 5, z: -5, color: 0x4d2600 },    // NE - dark orange
+        { type: 'natural', x: -5, z: 5, color: 0x003300 }, // SW - dark green
+        { type: 'water', x: 5, z: 5, color: 0x000066 }     // SE - dark blue
+    ];
+    
+    surfaceTypes.forEach(surf => {
+        const geometry = new THREE.PlaneGeometry(10, 10);
+        const material = new THREE.MeshBasicMaterial({ 
+            color: surf.color,
+            transparent: true,
+            opacity: 0.2,
+            side: THREE.DoubleSide
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.position.set(surf.x, 0.01, surf.z);
+        mesh.userData = { type: surf.type };
+        state.scene.add(mesh);
+        state.surfaces.push(mesh);
+    });
+}
+
+// Create scene objects
+function createObjects() {
+    if (state.sceneObjects.length >= CONFIG.MAX_OBJECTS) return;
+    
+    // Human (Category 4)
+    const humanGroup = new THREE.Group();
+    const headGeom = new THREE.SphereGeometry(0.12, 4, 3);
+    const head = new THREE.LineSegments(new THREE.WireframeGeometry(headGeom), new THREE.LineBasicMaterial({ color: 0xff6b6b }));
+    head.position.y = 1.5;
+    humanGroup.add(head);
+    
+    const torsoGeom = new THREE.BoxGeometry(0.35, 0.6, 0.2);
+    const torso = new THREE.LineSegments(new THREE.WireframeGeometry(torsoGeom), new THREE.LineBasicMaterial({ color: 0xff6b6b }));
+    torso.position.y = 1.0;
+    humanGroup.add(torso);
+    
+    const armGeom = new THREE.CylinderGeometry(0.04, 0.04, 0.6, 4);
+    const leftArm = new THREE.LineSegments(new THREE.WireframeGeometry(armGeom), new THREE.LineBasicMaterial({ color: 0xff6b6b }));
+    leftArm.position.set(-0.25, 1.0, 0);
+    humanGroup.add(leftArm);
+    
+    const rightArm = new THREE.LineSegments(new THREE.WireframeGeometry(armGeom), new THREE.LineBasicMaterial({ color: 0xff6b6b }));
+    rightArm.position.set(0.25, 1.0, 0);
+    humanGroup.add(rightArm);
+    
+    const legGeom = new THREE.CylinderGeometry(0.06, 0.06, 0.8, 4);
+    const leftLeg = new THREE.LineSegments(new THREE.WireframeGeometry(legGeom), new THREE.LineBasicMaterial({ color: 0xff6b6b }));
+    leftLeg.position.set(-0.12, 0.4, 0);
+    humanGroup.add(leftLeg);
+    
+    const rightLeg = new THREE.LineSegments(new THREE.WireframeGeometry(legGeom), new THREE.LineBasicMaterial({ color: 0xff6b6b }));
+    rightLeg.position.set(0.12, 0.4, 0);
+    humanGroup.add(rightLeg);
+    
+    humanGroup.position.set(-3, 0, 4);
+    humanGroup.userData = { 
+        id: 'human', category: 4, name: 'Human', 
+        synth: null, panner: null, volume: null, 
+        melody: [], isPlaying: false, height: 1.6, tomPitch: 'C4'
+    };
+    state.scene.add(humanGroup);
+    state.sceneObjects.push(humanGroup);
+    
+    // Bird (Category 3)
+    const birdGroup = new THREE.Group();
+    const bodyGeom = new THREE.SphereGeometry(0.2, 5, 3);
+    bodyGeom.scale(2.0, 0.6, 0.8);
+    bodyGeom.rotateY(Math.PI/2);
+    const body = new THREE.LineSegments(new THREE.WireframeGeometry(bodyGeom), new THREE.LineBasicMaterial({ color: 0x4ecdc4 }));
+    birdGroup.add(body);
+    
+    const wingGeom = new THREE.ConeGeometry(0.05, 1.0, 4);
+    wingGeom.scale(1, 1, 3);
+    const leftWing = new THREE.LineSegments(new THREE.WireframeGeometry(wingGeom), new THREE.LineBasicMaterial({ color: 0x4ecdc4 }));
+    leftWing.rotation.z = -Math.PI/2;
+    leftWing.position.set(-0.5, 0, 0);
+    birdGroup.add(leftWing);
+    
+    const rightWing = new THREE.LineSegments(new THREE.WireframeGeometry(wingGeom.clone()), new THREE.LineBasicMaterial({ color: 0x4ecdc4 }));
+    rightWing.rotation.z = Math.PI/2;
+    rightWing.position.set(0.5, 0, 0);
+    birdGroup.add(rightWing);
+    
+    const headBirdGeom = new THREE.SphereGeometry(0.1, 3, 2);
+    const headBird = new THREE.LineSegments(new THREE.WireframeGeometry(headBirdGeom), new THREE.LineBasicMaterial({ color: 0x4ecdc4 }));
+    headBird.position.set(0, 0, -0.35);
+    birdGroup.add(headBird);
+    
+    birdGroup.position.set(-2, 2.5, 2);
+    birdGroup.userData = { 
+        id: 'bird', category: 3, name: 'Bird', 
+        synth: null, panner: null, volume: null, 
+        melody: [], isPlaying: false, height: 0.4, tomPitch: 'F4'
+    };
+    state.scene.add(birdGroup);
+    state.sceneObjects.push(birdGroup);
+    
+    // Car (Category 2)
+    const carGroup = new THREE.Group();
+    const carBodyGeom = new THREE.BoxGeometry(0.8, 0.5, 1.8);
+    const carBody = new THREE.LineSegments(new THREE.WireframeGeometry(carBodyGeom), new THREE.LineBasicMaterial({ color: 0xfab005 }));
+    carBody.position.y = 0.35;
+    carGroup.add(carBody);
+    
+    const carRoofGeom = new THREE.BoxGeometry(0.7, 0.35, 1.0);
+    const carRoof = new THREE.LineSegments(new THREE.WireframeGeometry(carRoofGeom), new THREE.LineBasicMaterial({ color: 0xfab005 }));
+    carRoof.position.y = 0.75;
+    carGroup.add(carRoof);
+    
+    const wheelGeom = new THREE.CylinderGeometry(0.15, 0.15, 0.1, 6);
+    wheelGeom.rotateZ(Math.PI/2);
+    
+    const wheel1 = new THREE.LineSegments(new THREE.WireframeGeometry(wheelGeom), new THREE.LineBasicMaterial({ color: 0xfab005 }));
+    wheel1.position.set(-0.45, 0.15, 0.6);
+    carGroup.add(wheel1);
+    
+    const wheel2 = new THREE.LineSegments(new THREE.WireframeGeometry(wheelGeom.clone()), new THREE.LineBasicMaterial({ color: 0xfab005 }));
+    wheel2.position.set(0.45, 0.15, 0.6);
+    carGroup.add(wheel2);
+    
+    const wheel3 = new THREE.LineSegments(new THREE.WireframeGeometry(wheelGeom.clone()), new THREE.LineBasicMaterial({ color: 0xfab005 }));
+    wheel3.position.set(-0.45, 0.15, -0.6);
+    carGroup.add(wheel3);
+    
+    const wheel4 = new THREE.LineSegments(new THREE.WireframeGeometry(wheelGeom.clone()), new THREE.LineBasicMaterial({ color: 0xfab005 }));
+    wheel4.position.set(0.45, 0.15, -0.6);
+    carGroup.add(wheel4);
+    
+    carGroup.position.set(6, 0, 0);
+    carGroup.userData = { 
+        id: 'car', category: 2, name: 'Car', 
+        synth: null, panner: null, volume: null, 
+        melody: [], isPlaying: false, height: 0.9, tomPitch: 'A3'
+    };
+    state.scene.add(carGroup);
+    state.sceneObjects.push(carGroup);
+    
+    // Tree (Category 1)
+    const treeGroup = new THREE.Group();
+    const trunkGeom = new THREE.CylinderGeometry(0.2, 0.3, 1.6, 6);
+    const trunk = new THREE.LineSegments(new THREE.WireframeGeometry(trunkGeom), new THREE.LineBasicMaterial({ color: 0x8B4513 }));
+    trunk.position.y = 0.8;
+    treeGroup.add(trunk);
+    
+    const canopyGeom = new THREE.ConeGeometry(1.2, 2.0, 7);
+    const canopy = new THREE.LineSegments(new THREE.WireframeGeometry(canopyGeom), new THREE.LineBasicMaterial({ color: 0x51cf66 }));
+    canopy.position.y = 2.2;
+    treeGroup.add(canopy);
+    
+    treeGroup.position.set(-5, 0, -5);
+    treeGroup.userData = { 
+        id: 'tree', category: 1, name: 'Tree', 
+        synth: null, panner: null, volume: null, 
+        melody: [], isPlaying: false, height: 3.2, tomPitch: 'D4'
+    };
+    state.scene.add(treeGroup);
+    state.sceneObjects.push(treeGroup);
+    
+    // Pillar (Category 1)
+    const pillarGeometry = new THREE.BoxGeometry(0.8, 4, 0.8);
+    const pillar = new THREE.LineSegments(new THREE.WireframeGeometry(pillarGeometry), new THREE.LineBasicMaterial({ color: 0x868e96 }));
+    pillar.position.set(0, 2, 6);
+    pillar.userData = { 
+        id: 'pillar', category: 1, name: 'Pillar', 
+        synth: null, panner: null, volume: null, 
+        melody: [], isPlaying: false, height: 4.0, tomPitch: 'G3'
+    };
+    state.scene.add(pillar);
+    state.sceneObjects.push(pillar);
+}
+
+// Initialize audio with dual sky system
+async function initAudio() {
+    await Tone.start();
+    
+    // Named audio buses with frozen routing
+    state.masterLimiter = new Tone.Limiter(CONFIG.MASTER_LIMITER_DB).toDestination();
+    state.masterCompressor = new Tone.Compressor({
+        threshold: CONFIG.COMPRESSOR_THRESHOLD,
+        ratio: CONFIG.COMPRESSOR_RATIO,
+        attack: 0.002,
+        release: 0.15,
+        knee: 2
+    }).connect(state.masterLimiter);
+    
+    // Sub-buses
+    state.melodicBus = new Tone.Volume(0).connect(state.masterCompressor);
+    state.percussionBus = new Tone.Volume(0).connect(state.masterCompressor);
+    state.proximityBus = new Tone.Volume(0).connect(state.masterCompressor);
+    state.surfaceBus = new Tone.Volume(CONFIG.SURFACE_PERCUSSION_VOLUME).connect(state.masterCompressor);
+    state.skyBus = new Tone.Volume(CONFIG.SKY_MIN_VOLUME).connect(state.masterCompressor);
+    state.skyFilter = new Tone.Filter({ type: 'lowpass', frequency: 2000, Q: 0.5 });
+    state.skyFilter.connect(state.skyBus);
+    
+    state.bassDrum = new Tone.MembraneSynth({ 
+        volume: CONFIG.BASS_DRUM_VOLUME,
+        envelope: {
+            attack: 0.02,
+            decay: 0.1,
+            sustain: 0,
+            release: 0.2,
+            attackCurve: 'sine'
+        }
+    }).connect(state.percussionBus);
+    
+    Tone.Transport.bpm.value = CONFIG.BPM;
+    Tone.Transport.timeSignature = CONFIG.TIME_SIGNATURE;
+    
+    // Use deterministic pattern assignment
+    Math.random = (function() {
+        let seed = CONFIG.RANDOM_SEED;
+        return function() {
+            seed = (seed * 9301 + 49297) % 233280;
+            return seed / 233280;
+        };
+    })();
+
+    initSurfacePercussion();
+    initSkyConditions();     // Weather states
+    initSkyMelodic();        // New melodic sky items
+    initProximityScheduler();
+
+    let patternIndex = 0;
+    state.sceneObjects.forEach(obj => {
+        const userData = obj.userData;
+        
+        // Create tom drum
+        const tomDrum = new Tone.MembraneSynth({
+            pitchDecay: 0.05,
+            octaves: 4,
+            oscillator: { type: 'sine' },
+            envelope: {
+                attack: 0.15,
+                decay: 0.35,
+                sustain: 0,
+                release: 0.6,
+                attackCurve: 'linear'
+            },
+            volume: -10
+        });
+        
+        const tomPanner = new Tone.Panner3D({
+            positionX: obj.position.x,
+            positionY: obj.position.y,
+            positionZ: obj.position.z,
+            distanceModel: 'inverse',
+            refDistance: 1,
+            maxDistance: 20,
+            rolloffFactor: 1
+        });
+        
+        const tomVolume = new Tone.Volume(0);
+        tomDrum.chain(tomPanner, tomVolume, state.proximityBus);
+        
+        state.tomDrums[userData.id] = {
+            drum: tomDrum,
+            panner: tomPanner,
+            volume: tomVolume,
+            pitch: userData.tomPitch,
+            pattern: TOM_PATTERN_POOL[patternIndex % TOM_PATTERN_POOL.length],
+            active: false
+        };
+        
+        state.proximityStates[userData.id] = {
+            near: false,
+            touching: false,
+            lastTrigger: 0
+        };
+        
+        state.proximitySchedule[userData.id] = {
+            scheduled: false,
+            nextChange: null,
+            currentPattern: null
+        };
+        
+        patternIndex++;
+        
+        // Initialize main synth
+        let synthType;
+        switch(userData.category) {
+            case 4: synthType = 'sawtooth'; break;
+            case 3: synthType = 'triangle'; break;
+            case 2: synthType = 'square'; break;
+            case 1: synthType = 'sine'; break;
+        }
+        
+        userData.synth = new Tone.PolySynth(Tone.Synth, {
+            maxPolyphony: userData.category === 4 ? 6 : 3,
+            oscillator: { type: synthType },
+            envelope: {
+                attack: userData.category === 1 ? 0.1 : 0.03,
+                decay: userData.category === 1 ? 0.3 : 0.1,
+                sustain: userData.category === 1 ? 0.7 : 0.5,
+                release: userData.category === 1 ? 4 : 0.5,
+                attackCurve: 'cosine',
+                decayCurve: 'exponential',
+                releaseCurve: 'exponential'
+            },
+            volume: userData.category === 4 ? -15 : -12
+        });
+        
+        userData.panner = new Tone.Panner3D({
+            positionX: obj.position.x,
+            positionY: obj.position.y,
+            positionZ: obj.position.z,
+            distanceModel: 'inverse',
+            refDistance: 1,
+            maxDistance: 20,
+            rolloffFactor: 1
+        });
+        
+        userData.highpass = new Tone.Filter({
+            type: 'highpass',
+            frequency: 80,
+            Q: 0.5
+        });
+        
+        userData.elevationFilter = new Tone.Filter({
+            type: 'highshelf',
+            frequency: 7000,
+            Q: 0.7,
+            gain: 0
+        });
+        
+        userData.pinnaFilter = new Tone.Filter({
+            type: 'notch',
+            frequency: 8000,
+            Q: 2
+        });
+        
+        userData.occlusionFilter = new Tone.Filter({
+            type: 'lowpass',
+            frequency: 20000,
+            Q: 0.5
+        });
+        
+        userData.volume = new Tone.Volume(-9);
+        
+        userData.synth.chain(
+            userData.highpass,
+            userData.elevationFilter,
+            userData.pinnaFilter,
+            userData.occlusionFilter,
+            userData.panner,
+            userData.volume,
+            state.melodicBus
+        );
+        
+        userData.melody = generateMelody(userData.category);
+    });
+}
+
+// Initialize sky melodic instruments (sun/clouds)
+function initSkyMelodic() {
+    // Sun - Vibraphone (reduced from -32 to -40)
+    const sunSynth = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'sine' },
+        envelope: { attack: 0.1, decay: 0.3, sustain: 0.4, release: 2 }
+    });
+    const sunVolume = new Tone.Volume(-40);  // Even quieter
+    const sunPanner = new Tone.Panner3D({ 
+        positionX: 0,
+        positionY: 10,
+        positionZ: -5,
+        distanceModel: 'inverse',
+        refDistance: 5,
+        maxDistance: 30
+    });
+    sunSynth.chain(sunVolume, sunPanner, state.melodicBus);
+    
+    state.skyItems.sun = {
+        synth: sunSynth,
+        volume: sunVolume,
+        panner: sunPanner,
+        active: true
+    };
+    
+    // Stars removed - no musical indicator for nighttime
+    state.skyItems.stars = null;
+    
+    // Clouds - Tubular bells (was marimba, now using tubular bells)
+    const cloudsSynth = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: 'triangle' },  // Tubular bells characteristics
+        envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 1.5 }
+    });
+    const cloudsVolume = new Tone.Volume(-45);  // Even quieter
+    cloudsSynth.chain(cloudsVolume, state.melodicBus);
+    
+    state.skyItems.clouds = {
+        synth: cloudsSynth,
+        volume: cloudsVolume,
+        active: false
+    };
+}
+
+// Schedule sky melodic patterns
+function scheduleSkyMelodic() {
+    if (!state.skyItems.sun || !state.skyItems.clouds) return;
+    
+    // Reduced sun bars: 1, 9, 17, 25
+    const sunBars = [1, 9, 17, 25];
+    // Reduced cloud bars: 3, 11, 19, 27
+    const cloudBars = [3, 11, 19, 27];
+    
+    // Sun pattern - check if current bar is a sun bar
+    if (sunBars.includes(state.currentBar)) {
+        const barIndex = sunBars.indexOf(state.currentBar);
+        const sunPatterns = [
+            ['C', 'E'], ['G', 'A'], ['C', 'E'], ['G', 'A']
+        ];
+        const notes = sunPatterns[barIndex];
+        
+        if (state.skyItems.currentTime === 'day' && state.skyItems.sun && state.skyItems.sun.active) {
+            // Sun: power chord - one play of both notes together
+            const octave = getSunOctave();
+            // Update sun position based on time
+            const angle = (state.currentBar / 32) * Math.PI;
+            state.skyItems.sun.panner.positionX.value = Math.cos(angle) * 10;
+            state.skyItems.sun.panner.positionY.value = Math.sin(angle) * 5 + 5;
+            
+            state.skyItems.sun.synth.triggerAttackRelease(
+                [`${notes[0]}${octave}`, `${notes[1]}${octave}`],
+                '1n'
+            );
+        }
+    }
+    
+    // Stars removed - no nighttime musical indicator
+    
+    // Clouds pattern - check if current bar is a cloud bar
+    if (cloudBars.includes(state.currentBar)) {
+        if (state.skyItems.cloudPresence && state.skyItems.clouds && state.skyItems.clouds.active) {
+            const barIndex = cloudBars.indexOf(state.currentBar);
+            const cloudNotes = ['C', 'E', 'C', 'E'];  // Alternating C and E
+            const note = cloudNotes[barIndex];
+            const octave = 5;  // Second-highest octave for clouds
+            
+            // Steady repetitions on beats and half-beats
+            for (let i = 0; i < 8; i++) {
+                setTimeout(() => {
+                    if (state.skyItems.clouds && state.skyItems.clouds.synth) {
+                        state.skyItems.clouds.synth.triggerAttackRelease(
+                            `${note}${octave}`,
+                            '8n'
+                        );
+                    }
+                }, i * 125);  // Every 125ms for 8 notes total
+            }
+        }
+    }
+}
+
+function getSunOctave() {
+    if (!state.skyItems || !state.skyItems.sunPosition) return 4;
+    const elevation = state.skyItems.sunPosition.elevation;
+    if (elevation < 20) return 4;
+    else if (elevation < 40) return 5;
+    else return 6;
+}
+
+// Initialize complementary surface percussion
+function initSurfacePercussion() {
+    // Road - snare (anchor beat) - slightly boosted
+    const snare = new Tone.NoiseSynth({
+        noise: { type: 'white' },
+        envelope: { attack: 0.005, decay: 0.1, sustain: 0 },
+        volume: -9  // Increased from -12 to -9 (3dB boost)
+    });
+    
+    // Path - rim shot (complementary beat) - boosted volume
+    const rim = new Tone.MetalSynth({
+        frequency: 200,
+        envelope: { attack: 0.001, decay: 0.1, release: 0.02 },
+        harmonicity: 5.1,
+        modulationIndex: 32,
+        resonance: 4000,
+        octaves: 1.5,
+        volume: 6  // Boost volume to ensure audibility
+    });
+    
+    // Natural - shaker (off-beats)
+    const shaker = new Tone.NoiseSynth({
+        noise: { type: 'pink' },
+        envelope: { attack: 0.02, decay: 0.03, sustain: 0.02, release: 0.03 }
+    });
+    
+    // Water - sustained sound (fills gaps) - reduced volume
+    const ride = new Tone.NoiseSynth({
+        noise: { type: 'pink' },
+        envelope: { 
+            attack: 0.1, 
+            decay: 0.5, 
+            sustain: 0.3, 
+            release: 1.0 
+        },
+        volume: -6  // Reduced from 0 to -6
+    });
+    
+    // Drop - crash
+    const crash = new Tone.NoiseSynth({
+        noise: { type: 'white' },
+        envelope: { 
+            attack: 0.001, 
+            decay: 0.3, 
+            sustain: 0, 
+            release: 0.5 
+        },
+        volume: 3
+    });
+    
+    // Edge - hihat
+    const hihat = new Tone.MetalSynth({
+        frequency: 400,
+        envelope: { attack: 0.001, decay: 0.03, release: 0.01 },
+        harmonicity: 5.1,
+        modulationIndex: 16,
+        resonance: 2000,
+        octaves: 1
+    });
+    
+    // Incline - bongo (high pitch) - boosted volume
+    const bongo = new Tone.MembraneSynth({
+        pitchDecay: 0.02,
+        octaves: 4,
+        oscillator: { type: 'sine' },
+        envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.15 },
+        volume: 3  // Boost volume
+    });
+    
+    // Decline - conga (low pitch) - boosted volume
+    const conga = new Tone.MembraneSynth({
+        pitchDecay: 0.04,
+        octaves: 3,
+        oscillator: { type: 'sine' },
+        envelope: { attack: 0.002, decay: 0.25, sustain: 0, release: 0.25 },
+        volume: 3  // Boost volume
+    });
+    
+    // Connect all to surface bus with panners
+    ['road', 'path', 'natural', 'water', 'drop', 'edge', 'incline', 'decline'].forEach((type) => {
+        const instruments = { road: snare, path: rim, natural: shaker, water: ride, 
+                            drop: crash, edge: hihat, incline: bongo, decline: conga };
+        const panner = new Tone.Panner3D({ refDistance: 1, maxDistance: 20 });
+        const volume = new Tone.Volume(0);
+        instruments[type].chain(panner, volume, state.surfaceBus);
+        
+        state.surfacePercussion[type] = {
+            instrument: instruments[type],
+            panner: panner,
+            volume: volume,
+            pattern: null,
+            lastTrigger: 0
+        };
+    });
+}
+
+// Initialize sky conditions (weather states)
+function initSkyConditions() {
+    state.skyConditions.clear = new Tone.Oscillator(110, 'sine');
+    state.skyConditions.clear.volume.value = -40;
+    
+    state.skyConditions.wind = new Tone.Noise('pink');
+    state.skyConditions.wind.volume.value = -12;
+    
+    state.skyConditions.rain = new Tone.Noise('white');
+    state.skyConditions.rain.volume.value = -8;
+    
+    state.skyConditions.storm = new Tone.Noise('brown');
+    state.skyConditions.storm.volume.value = -6;
+    
+    Object.values(state.skyConditions).forEach(source => {
+        source.connect(state.skyFilter);
+    });
+}
+
+// Set sky condition with crossfade
+function setSkyCondition(newState) {
+    if (!state.skyConditions || state.currentSkyState === newState) return;
+    if (state.skyTransitioning) return;
+    
+    state.skyTransitioning = true;
+    const fadeTime = 0.5;
+    
+    const current = state.skyConditions[state.currentSkyState];
+    if (current.state === 'started') {
+        current.volume.linearRampTo(-60, fadeTime);
+        setTimeout(() => current.stop(), fadeTime * 1000);
+    }
+    
+    const next = state.skyConditions[newState];
+    const targetVol = { clear: -40, wind: -12, rain: -8, storm: -6 }[newState];
+    next.volume.value = -60;
+    next.start();
+    next.volume.linearRampTo(targetVol, fadeTime);
+    
+    state.currentSkyState = newState;
+    setTimeout(() => { state.skyTransitioning = false; }, fadeTime * 1000);
+    
+    const skyNames = { clear: 'Clear', wind: 'Wind', rain: 'Rain', storm: 'Storm' };
+    document.getElementById('skyStatus').textContent = skyNames[newState];
+}
+
+// Toggle day/night
+function toggleDayNight() {
+    if (!state.skyItems.sun) return;
+    
+    state.skyItems.currentTime = state.skyItems.currentTime === 'day' ? 'night' : 'day';
+    state.skyItems.sun.active = state.skyItems.currentTime === 'day';
+    // Stars removed - no musical indicator for night
+    document.getElementById('timeStatus').textContent = state.skyItems.currentTime === 'day' ? 'Day' : 'Night';
+}
+
+// Toggle clouds
+function toggleClouds() {
+    if (!state.skyItems.clouds) return;
+    
+    state.skyItems.cloudPresence = !state.skyItems.cloudPresence;
+    state.skyItems.clouds.active = state.skyItems.cloudPresence;
+    document.getElementById('cloudStatus').textContent = state.skyItems.cloudPresence ? 'Present' : 'None';
+}
+
+// Initialize proximity scheduler
+function initProximityScheduler() {
+    Tone.Transport.scheduleRepeat((time) => {
+        if (!state.isAudioRunning) return;
+        
+        const beatInBar = Tone.Transport.position.split(':')[1];
+        const currentBeat = parseInt(beatInBar);
+        
+        state.sceneObjects.forEach(obj => {
+            const pState = state.proximityStates[obj.userData.id];
+            const schedule = state.proximitySchedule[obj.userData.id];
+            const tom = state.tomDrums[obj.userData.id];
+            
+            if (!pState || !tom) return;
+            
+            if (pState.touching && !schedule.currentPattern?.contact) {
+                schedule.nextChange = { type: 'contact', atBar: true };
+            } else if (pState.near && !pState.touching && schedule.currentPattern?.contact) {
+                schedule.nextChange = { type: 'near', atBar: false };
+            } else if (pState.near && !schedule.currentPattern) {
+                schedule.nextChange = { type: 'near', atBar: false };
+            } else if (!pState.near && schedule.currentPattern) {
+                schedule.nextChange = { type: 'stop', atBar: false };
+            }
+            
+            if (schedule.nextChange) {
+                const isBarBoundary = currentBeat === 0;
+                const applyNow = !schedule.nextChange.atBar || isBarBoundary;
+                
+                if (applyNow) {
+                    if (schedule.nextChange.type === 'contact') {
+                        schedule.currentPattern = { contact: true };
+                    } else if (schedule.nextChange.type === 'near') {
+                        schedule.currentPattern = { pattern: tom.pattern, contact: false };
+                    } else if (schedule.nextChange.type === 'stop') {
+                        schedule.currentPattern = null;
+                    }
+                    schedule.nextChange = null;
+                }
+            }
+            
+            if (schedule.currentPattern) {
+                if (schedule.currentPattern.contact) {
+                    if (currentBeat === 0 || currentBeat === 2) {
+                        for (let i = 0; i < 4; i++) {
+                            Tone.Transport.scheduleOnce((t) => {
+                                if (state.proximityStates[obj.userData.id].touching) {
+                                    tom.drum.triggerAttackRelease(tom.pitch, '16n', t);
+                                }
+                            }, `+${i * 0.125}n`);
+                        }
+                    }
+                } else {
+                    const pattern = schedule.currentPattern.pattern;
+                    if (pattern.beats.includes(currentBeat) || 
+                        pattern.beats.includes(currentBeat + 0.5)) {
+                        tom.drum.triggerAttackRelease(tom.pitch, '8n', time);
+                    }
+                }
+            }
+        });
+    }, '4n');
+}
+
+// Generate melody
+function generateMelody(category) {
+    const melody = [];
+    let lastNote = null;
+    
+    for (let bar = 1; bar <= 32; bar++) {
+        const availableNotes = BAR_NOTES[bar];
+        const barNotes = [];
+        
+        switch(category) {
+            case 1:
+                if (lastNote && availableNotes.includes(lastNote)) {
+                    barNotes.push({ note: lastNote, duration: '1n', time: 0, sustained: true });
+                } else {
+                    const note = availableNotes[0];
+                    barNotes.push({ note: note, duration: '1n', time: 0, sustained: false });
+                    lastNote = note;
+                }
+                break;
+                
+            case 2:
+                for (let i = 0; i < 2; i++) {
+                    barNotes.push({ note: availableNotes[i % availableNotes.length], duration: '2n', time: i * 0.5 });
+                }
+                break;
+                
+            case 3:
+                for (let i = 0; i < 4; i++) {
+                    barNotes.push({ note: availableNotes[i % availableNotes.length], duration: '4n', time: i * 0.25 });
+                }
+                break;
+                
+            case 4:
+                for (let i = 0; i < 8; i++) {
+                    const note = availableNotes[Math.floor(Math.random() * availableNotes.length)];
+                    barNotes.push({ note: note, duration: '8n', time: i * 0.125 });
+                }
+                break;
+        }
+        
+        melody.push(barNotes);
+    }
+    
+    return melody;
+}
+
+// Calculate octaves
+function calculateOctaves(object) {
+    if (!object || !object.position) return [4];
+    
+    try {
+        const vector = new THREE.Vector3();
+        vector.copy(object.position);
+        vector.project(state.camera);
+        
+        const screenY = (vector.y + 1) / 2;
+        
+        let objectHeight = 0.2;
+        let objectBaseY = object.position.y;
+        
+        if (object.userData && object.userData.height) {
+            objectHeight = object.userData.height;
+            if (object.userData.id === 'pillar') {
+                objectBaseY = object.position.y - 2;
+            }
+        }
+        
+        const bottomVector = new THREE.Vector3(object.position.x, objectBaseY, object.position.z);
+        bottomVector.project(state.camera);
+        const bottomScreen = (bottomVector.y + 1) / 2;
+        
+        const topVector = new THREE.Vector3(object.position.x, objectBaseY + objectHeight, object.position.z);
+        topVector.project(state.camera);
+        const topScreen = (topVector.y + 1) / 2;
+        
+        const octaves = [];
+        for (let i = 0; i < 5; i++) {
+            const fifthBottom = i / 5;
+            const fifthTop = (i + 1) / 5;
+            
+            if (bottomScreen <= fifthTop && topScreen >= fifthBottom) {
+                octaves.push(2 + i);
+            }
+        }
+        
+        if (octaves.length === 0) {
+            const centerScreen = (bottomScreen + topScreen) / 2;
+            const fifth = Math.floor(centerScreen * 5);
+            octaves.push(Math.min(6, Math.max(2, 2 + fifth)));
+        }
+        
+        return octaves;
+    } catch (err) {
+        return [4];
+    }
+}
+
+// Check if object is in view
+function isInView(object) {
+    const frustum = new THREE.Frustum();
+    const cameraMatrix = new THREE.Matrix4().multiplyMatrices(
+        state.camera.projectionMatrix,
+        state.camera.matrixWorldInverse
+    );
+    frustum.setFromProjectionMatrix(cameraMatrix);
+    
+    const box = new THREE.Box3();
+    
+    if (object.children && object.children.length > 0) {
+        box.setFromObject(object);
+    } else {
+        const objectWorldPos = new THREE.Vector3();
+        object.getWorldPosition(objectWorldPos);
+        const size = object.userData.height || 1;
+        box.setFromCenterAndSize(objectWorldPos, new THREE.Vector3(1, size, 1));
+    }
+    
+    return frustum.intersectsBox(box);
+}
+
+// Update proximity
+function updateProximity() {
+    let proximityCount = 0;
+    const proximityListHTML = [];
+    
+    Object.keys(state.tomDrums).forEach(id => {
+        const obj = state.sceneObjects.find(o => o.userData.id === id);
+        if (obj && state.tomDrums[id]) {
+            const tom = state.tomDrums[id];
+            tom.panner.positionX.value = obj.position.x;
+            tom.panner.positionY.value = obj.position.y;
+            tom.panner.positionZ.value = obj.position.z;
+        }
+    });
+
+    state.sceneObjects.forEach(obj => {
+        const objPos = new THREE.Vector3();
+        if (obj.children && obj.children.length > 0) {
+            obj.getWorldPosition(objPos);
+        } else {
+            objPos.copy(obj.position);
+        }
+        
+        const dx = state.camera.position.x - objPos.x;
+        const dz = state.camera.position.z - objPos.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+        
+        const pState = state.proximityStates[obj.userData.id];
+        const tom = state.tomDrums[obj.userData.id];
+        
+        if (tom) {
+            const volume = Math.max(-30, 0 - (distance / 15) * 30);
+            tom.volume.volume.value = volume;
+        }
+        
+        pState.touching = distance <= CONFIG.PROXIMITY_TOUCH;
+        pState.near = distance <= CONFIG.PROXIMITY_NEAR;
+        
+        if (pState.near) {
+            proximityCount++;
+            if (pState.touching) {
+                proximityListHTML.push(`<div class="proximity-item danger">⚠️ ${obj.userData.name}: ${distance.toFixed(1)}m</div>`);
+            } else {
+                proximityListHTML.push(`<div class="proximity-item warning">⚠️ ${obj.userData.name}: ${distance.toFixed(1)}m</div>`);
+            }
+        }
+    });
+    
+    document.getElementById('proximityCount').textContent = proximityCount;
+    
+    if (proximityListHTML.length > 0) {
+        document.getElementById('proximityList').innerHTML = proximityListHTML.join('');
+    } else {
+        document.getElementById('proximityList').innerHTML = '<div class="proximity-item">No nearby objects</div>';
+    }
+}
+
+// Update audio
+function updateAudio() {
+    if (!state.isAudioRunning) return;
+    
+    let visibleCount = 0;
+    const objectListHTML = [];
+    
+    state.sceneObjects.forEach(obj => {
+        const userData = obj.userData;
+        const visible = isInView(obj);
+        
+        const dx = state.camera.position.x - obj.position.x;
+        const dz = state.camera.position.z - obj.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+        const isNear = distance <= 3;
+        
+        if (visible) {
+            visibleCount++;
+            
+            userData.panner.positionX.value = obj.position.x;
+            userData.panner.positionY.value = obj.position.y;
+            userData.panner.positionZ.value = obj.position.z;
+            
+            Tone.Listener.positionX.value = state.camera.position.x;
+            Tone.Listener.positionY.value = state.camera.position.y;
+            Tone.Listener.positionZ.value = state.camera.position.z;
+            
+            const forward = new THREE.Vector3(0, 0, -1);
+            forward.applyQuaternion(state.camera.quaternion);
+            Tone.Listener.forwardX.value = forward.x;
+            Tone.Listener.forwardY.value = forward.y;
+            Tone.Listener.forwardZ.value = forward.z;
+            
+            const up = new THREE.Vector3(0, 1, 0);
+            up.applyQuaternion(state.camera.quaternion);
+            Tone.Listener.upX.value = up.x;
+            Tone.Listener.upY.value = up.y;
+            Tone.Listener.upZ.value = up.z;
+            
+            const toObject = new THREE.Vector3();
+            toObject.subVectors(obj.position, state.camera.position);
+            const dist3D = toObject.length();
+            toObject.normalize();
+            
+            const elevation = Math.asin(toObject.y) * (180 / Math.PI);
+            
+            if (userData.elevationFilter) {
+                userData.elevationFilter.gain.value = elevation * 0.15;
+                userData.pinnaFilter.frequency.value = 8000 + (elevation * 40);
+                
+                let cutoffFreq = 20000;
+                if (elevation < -30) {
+                    cutoffFreq = 20000 - ((Math.abs(elevation) - 30) * 200);
+                    cutoffFreq = Math.max(2000, cutoffFreq);
+                }
+                
+                const forwardDot = forward.dot(toObject);
+                if (forwardDot < 0) {
+                    cutoffFreq = Math.min(cutoffFreq, 5000 - (Math.abs(forwardDot) * 2000));
+                }
+                
+                userData.occlusionFilter.frequency.value = cutoffFreq;
+            }
+            
+            const volume = Math.max(-30, 0 - (dist3D / 15) * 30);
+            userData.volume.volume.value = volume;
+            
+            const octaves = calculateOctaves(obj);
+            const octaveInfo = octaves.length > 1 ? `[${octaves.join(',')}]` : `[${octaves[0]}]`;
+            
+            if (!userData.isPlaying) {
+                userData.isPlaying = true;
+            }
+            
+            const className = isNear ? 'visible proximity' : 'visible';
+            objectListHTML.push(`<div class="object-item ${className}">${isNear ? '🟡' : '🟢'} ${userData.name}${octaveInfo}</div>`);
+        } else {
+            if (userData.isPlaying) {
+                userData.isPlaying = false;
+            }
+            objectListHTML.push(`<div class="object-item">⚫ ${userData.name}</div>`);
+        }
+    });
+    
+    document.getElementById('visibleCount').textContent = visibleCount;
+    document.getElementById('objectList').innerHTML = objectListHTML.join('');
+    document.getElementById('hudFOV').textContent = `${visibleCount}/${Math.min(state.sceneObjects.length, CONFIG.MAX_OBJECTS)}`;
+}
+
+// Update complementary surface percussion patterns
+function updateSurfacePercussion() {
+    if (!state.isAudioRunning || !state.surfacePercussion) return;
+    if (Date.now() - state.lastPercussionUpdate < CONFIG.PERCUSSION_UPDATE_RATE) return;
+    state.lastPercussionUpdate = Date.now();
+    
+    const standingOn = getSurfaceAt(state.camera.position.x, state.camera.position.z);
+    document.getElementById('surfaceStatus').textContent = standingOn ? 
+        standingOn.charAt(0).toUpperCase() + standingOn.slice(1) : 'None';
+    
+    // Check proximity to walls for edge detection
+    const edgeDistance = Math.min(
+        Math.abs(state.camera.position.x - state.wallDistance),
+        Math.abs(state.camera.position.x + state.wallDistance),
+        Math.abs(state.camera.position.z - state.wallDistance),
+        Math.abs(state.camera.position.z + state.wallDistance)
+    );
+    const nearEdge = edgeDistance < CONFIG.EDGE_DETECTION_DISTANCE;
+    
+    // Update each surface percussion
+    Object.keys(state.surfacePercussion).forEach(type => {
+        const perc = state.surfacePercussion[type];
+        
+        if (type === standingOn) {
+            // Standing on this surface - centered, below, max volume
+            perc.panner.positionX.value = state.camera.position.x;
+            perc.panner.positionY.value = state.camera.position.y - 2;
+            perc.panner.positionZ.value = state.camera.position.z;
+            perc.volume.volume.value = type === 'path' ? -6 : 0; // Boost path volume
+            
+            // Play pattern if not already playing
+            if (!perc.pattern) {
+                const beatInterval = 60 / CONFIG.BPM;
+                if (type === 'road') {
+                    // Road: Play twice per bar (beats 1 and 3) for more regular feedback
+                    perc.pattern = setInterval(() => {
+                        perc.instrument.triggerAttackRelease('8n');
+                    }, beatInterval * 2 * 1000); // Every 2 beats
+                } else if (type === 'path') {
+                    // Path: Double-strike pattern, also twice per bar (beats 1 and 3)
+                    perc.pattern = setInterval(() => {
+                        // First strike
+                        perc.instrument.triggerAttackRelease('16n');
+                        // Second strike 50ms later for double-strike effect
+                        setTimeout(() => {
+                            perc.instrument.triggerAttackRelease('16n');
+                        }, 50);
+                    }, beatInterval * 2 * 1000); // Every 2 beats
+                } else if (type === 'natural') {
+                    // Natural: Play on beat 2
+                    perc.pattern = setInterval(() => {
+                        perc.instrument.triggerAttackRelease('8n');
+                    }, beatInterval * 4 * 1000);
+                    // Offset for beat 2
+                    setTimeout(() => {
+                        if (perc.pattern) {
+                            clearInterval(perc.pattern);
+                            perc.pattern = setInterval(() => {
+                                perc.instrument.triggerAttackRelease('8n');
+                            }, beatInterval * 4 * 1000);
+                        }
+                    }, beatInterval * 1000);
+                } else if (type === 'water') {
+                    // Water: Play sustained sound on beat 2
+                    const barInterval = beatInterval * 4;
+                    perc.pattern = setInterval(() => {
+                        perc.instrument.triggerAttackRelease('2n');
+                    }, barInterval * 1000);
+                    // Offset for beat 2
+                    setTimeout(() => {
+                        if (perc.pattern) {
+                            clearInterval(perc.pattern);
+                            perc.pattern = setInterval(() => {
+                                perc.instrument.triggerAttackRelease('2n');
+                            }, barInterval * 1000);
+                        }
+                    }, beatInterval * 1000);
+                }
+            }
+        } else if (type === 'edge' && nearEdge) {
+            handleEdgePercussion(perc);
+        } else {
+            // Not on this surface - clear pattern
+            if (perc.pattern) {
+                clearInterval(perc.pattern);
+                perc.pattern = null;
+            }
+        }
+    });
+    
+    handleDropHazardPercussion();
+}
+
+// Handle edge percussion
+function handleEdgePercussion(perc) {
+    const camX = state.camera.position.x;
+    const camZ = state.camera.position.z;
+    
+    const eastDist = state.wallDistance - camX;
+    const westDist = camX + state.wallDistance;
+    const northDist = camZ + state.wallDistance;
+    const southDist = state.wallDistance - camZ;
+    
+    const minDist = Math.min(eastDist, westDist, northDist, southDist);
+    
+    let wallX, wallZ;
+    if (minDist === eastDist) {
+        wallX = state.wallDistance;
+        wallZ = state.camera.position.z;
+    } else if (minDist === westDist) {
+        wallX = -state.wallDistance;
+        wallZ = state.camera.position.z;
+    } else if (minDist === northDist) {
+        wallX = state.camera.position.x;
+        wallZ = -state.wallDistance;
+    } else {
+        wallX = state.camera.position.x;
+        wallZ = state.wallDistance;
+    }
+    
+    const forward = new THREE.Vector3(0, 0, -1);
+    forward.applyQuaternion(state.camera.quaternion);
+    forward.y = 0;
+    forward.normalize();
+    
+    const toWall = new THREE.Vector3(wallX - camX, 0, wallZ - camZ);
+    toWall.normalize();
+    
+    const dot = forward.dot(toWall);
+    const angle = Math.acos(Math.max(-1, Math.min(1, dot))) * (180 / Math.PI);
+    
+    if (angle < 120) {
+        perc.panner.positionX.value = wallX;
+        perc.panner.positionY.value = state.camera.position.y;
+        perc.panner.positionZ.value = wallZ;
+        
+        const volumeAtten = Math.max(-30, -minDist * 3);
+        perc.volume.volume.value = volumeAtten;
+        
+        if (!perc.pattern) {
+            perc.pattern = setInterval(() => {
+                perc.instrument.triggerAttackRelease('32n');
+            }, 250);
+        }
+    } else {
+        if (perc.pattern) {
+            clearInterval(perc.pattern);
+            perc.pattern = null;
+        }
+    }
+}
+
+// Handle drop hazard percussion
+function handleDropHazardPercussion() {
+    if (Date.now() - state.dropHazardState.lastUpdate > 1000) {
+        state.dropHazardState.lastUpdate = Date.now();
+        
+        let nearestHazardDistance = Infinity;
+        let nearestHazardEdge = null;
+        
+        state.hazards.forEach(hazard => {
+            if (hazard.type === 'drop') {
+                const holeLeft = hazard.position.x - hazard.size.x/2;
+                const holeRight = hazard.position.x + hazard.size.x/2;
+                const holeBack = hazard.position.z - hazard.size.z/2;
+                const holeFront = hazard.position.z + hazard.size.z/2;
+                
+                let edgeX, edgeZ, edgeDist;
+                
+                if (state.camera.position.x >= holeLeft && state.camera.position.x <= holeRight) {
+                    const frontDist = Math.abs(state.camera.position.z - holeFront);
+                    const backDist = Math.abs(state.camera.position.z - holeBack);
+                    if (frontDist < backDist) {
+                        edgeDist = frontDist;
+                        edgeX = state.camera.position.x;
+                        edgeZ = holeFront;
+                    } else {
+                        edgeDist = backDist;
+                        edgeX = state.camera.position.x;
+                        edgeZ = holeBack;
+                    }
+                } else if (state.camera.position.z >= holeBack && state.camera.position.z <= holeFront) {
+                    const leftDist = Math.abs(state.camera.position.x - holeLeft);
+                    const rightDist = Math.abs(state.camera.position.x - holeRight);
+                    if (leftDist < rightDist) {
+                        edgeDist = leftDist;
+                        edgeX = holeLeft;
+                        edgeZ = state.camera.position.z;
+                    } else {
+                        edgeDist = rightDist;
+                        edgeX = holeRight;
+                        edgeZ = state.camera.position.z;
+                    }
+                } else {
+                    const corners = [
+                        { x: holeLeft, z: holeBack },
+                        { x: holeRight, z: holeBack },
+                        { x: holeLeft, z: holeFront },
+                        { x: holeRight, z: holeFront }
+                    ];
+                    
+                    let minCornerDist = Infinity;
+                    corners.forEach(corner => {
+                        const dist = Math.sqrt(
+                            Math.pow(state.camera.position.x - corner.x, 2) + 
+                            Math.pow(state.camera.position.z - corner.z, 2)
+                        );
+                        if (dist < minCornerDist) {
+                            minCornerDist = dist;
+                            edgeX = corner.x;
+                            edgeZ = corner.z;
+                        }
+                    });
+                    edgeDist = minCornerDist;
+                }
+                
+                if (edgeDist < nearestHazardDistance) {
+                    nearestHazardDistance = edgeDist;
+                    nearestHazardEdge = { x: edgeX, y: 0, z: edgeZ };
+                }
+            }
+        });
+        
+        if (nearestHazardDistance < 4 && nearestHazardEdge) {
+            const dropPerc = state.surfacePercussion['drop'];
+            if (dropPerc) {
+                const forward = new THREE.Vector3(0, 0, -1);
+                forward.applyQuaternion(state.camera.quaternion);
+                forward.y = 0;
+                forward.normalize();
+                
+                const toHazard = new THREE.Vector3(
+                    nearestHazardEdge.x - state.camera.position.x, 
+                    0, 
+                    nearestHazardEdge.z - state.camera.position.z
+                );
+                toHazard.normalize();
+                
+                const dot = forward.dot(toHazard);
+                const angle = Math.acos(Math.max(-1, Math.min(1, dot))) * (180 / Math.PI);
+                
+                if (angle < 120) {
+                    dropPerc.panner.positionX.value = nearestHazardEdge.x;
+                    dropPerc.panner.positionY.value = nearestHazardEdge.y;
+                    dropPerc.panner.positionZ.value = nearestHazardEdge.z;
+                    
+                    if (nearestHazardDistance < 1) {
+                        dropPerc.volume.volume.value = -6;
+                        if (state.dropHazardState.currentZone !== 'danger') {
+                            if (state.dropHazardState.pattern) clearInterval(state.dropHazardState.pattern);
+                            state.dropHazardState.currentZone = 'danger';
+                            dropPerc.instrument.triggerAttackRelease('8n');
+                            const beatInterval = (60 / CONFIG.BPM) * 2;
+                            state.dropHazardState.pattern = setInterval(() => {
+                                dropPerc.instrument.triggerAttackRelease('8n');
+                            }, beatInterval * 1000);
+                        }
+                    } else if (nearestHazardDistance < 2) {
+                        dropPerc.volume.volume.value = -12;
+                        if (state.dropHazardState.currentZone !== 'near') {
+                            if (state.dropHazardState.pattern) clearInterval(state.dropHazardState.pattern);
+                            state.dropHazardState.currentZone = 'near';
+                            dropPerc.instrument.triggerAttackRelease('8n');
+                            const beatInterval = 60 / CONFIG.BPM * 4;
+                            state.dropHazardState.pattern = setInterval(() => {
+                                dropPerc.instrument.triggerAttackRelease('8n');
+                            }, beatInterval * 1000);
+                        }
+                    } else {
+                        dropPerc.volume.volume.value = -20;
+                        if (state.dropHazardState.currentZone !== 'far') {
+                            if (state.dropHazardState.pattern) clearInterval(state.dropHazardState.pattern);
+                            state.dropHazardState.currentZone = 'far';
+                            dropPerc.instrument.triggerAttackRelease('8n');
+                            const beatInterval = 60 / CONFIG.BPM * 8;
+                            state.dropHazardState.pattern = setInterval(() => {
+                                dropPerc.instrument.triggerAttackRelease('8n');
+                            }, beatInterval * 1000);
+                        }
+                    }
+                } else {
+                    if (state.dropHazardState.pattern) {
+                        clearInterval(state.dropHazardState.pattern);
+                        state.dropHazardState.pattern = null;
+                        state.dropHazardState.currentZone = null;
+                    }
+                }
+            }
+        } else {
+            if (state.dropHazardState.pattern) {
+                clearInterval(state.dropHazardState.pattern);
+                state.dropHazardState.pattern = null;
+                state.dropHazardState.currentZone = null;
+            }
+        }
+    }
+}
+
+// Get surface type at position
+function getSurfaceAt(x, z) {
+    if (x < 0 && z < 0) return 'road';
+    if (x > 0 && z < 0) return 'path';
+    if (x < 0 && z > 0) return 'natural';
+    if (x > 0 && z > 0) return 'water';
+    return null;
+}
+
+// Update sky audio based on elevation
+function updateSkyAudio() {
+    if (!state.skyFilter || !state.skyBus) return;
+    
+    const floorHeight = getFloorHeight(state.camera.position.x, state.camera.position.z);
+    const elevation = typeof floorHeight === 'number' ? floorHeight : CONFIG.FLOOR_BASE;
+    
+    const filterFreq = 500 + (elevation / CONFIG.RAMP_HEIGHT) * 3500;
+    state.skyFilter.frequency.rampTo(filterFreq, 0.1);
+    
+    const skyVolume = CONFIG.SKY_MIN_VOLUME + (elevation / CONFIG.RAMP_HEIGHT) * (CONFIG.SKY_MAX_VOLUME - CONFIG.SKY_MIN_VOLUME);
+    state.skyBus.volume.rampTo(skyVolume, 0.1);
+}
+
+// Update ramp visuals based on traversal
+function updateRampVisuals() {
+    if (!state.terrain) return;
+    
+    const ramp = state.terrain.find(t => t.userData.type === 'ramp');
+    if (!ramp) return;
+    
+    const rampX = ramp.position.x;
+    const rampZ = ramp.position.z;
+    const rampWidth = 4;
+    const rampLength = 6;
+    
+    const onRamp = Math.abs(state.camera.position.x - rampX) < rampWidth/2 && 
+                   Math.abs(state.camera.position.z - rampZ) < rampLength/2;
+    
+    if (onRamp) {
+        const isMoving = state.keys['w'] || state.keys['s'] || state.keys['a'] || state.keys['d'];
+        
+        if (isMoving && !state.rampVisuals.isTraversing) {
+            state.rampVisuals.isTraversing = true;
+            state.rampVisuals.lastRampPosition = state.camera.position.clone();  // Clone entire position
+            state.rampVisuals.lastPercussionTime = 0;
+        } else if (!isMoving) {
+            state.rampVisuals.isTraversing = false;
+        }
+        
+        if (state.rampVisuals.isTraversing && state.rampVisuals.lastRampPosition) {
+            // Calculate movement delta (primarily Z for straight up/down)
+            const deltaX = state.camera.position.x - state.rampVisuals.lastRampPosition.x;
+            const deltaZ = state.camera.position.z - state.rampVisuals.lastRampPosition.z;
+            const deltaY = state.camera.position.y - state.rampVisuals.lastRampPosition.y;
+            
+            // Determine direction based on Y change (more reliable than Z for ramp)
+            // Moving up the ramp = positive deltaY = incline (green)
+            // Moving down the ramp = negative deltaY = decline (red)
+            const targetColor = deltaY > 0.001 ? 0x00ff00 : (deltaY < -0.001 ? 0xff0000 : state.rampVisuals.currentColor);
+            
+            if (targetColor !== state.rampVisuals.currentColor) {
+                state.rampVisuals.currentColor = targetColor;
+                
+                if (state.rampVisuals.rampDotsMaterial) {
+                    state.rampVisuals.rampDotsMaterial.color.setHex(targetColor);
+                }
+                if (state.rampVisuals.rampLinesMaterial) {
+                    state.rampVisuals.rampLinesMaterial.color.setHex(targetColor);
+                }
+            }
+            
+            // Play percussion regularly while on ramp (every half second)
+            const now = Date.now();
+            const totalMovement = Math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
+            
+            if ((!state.rampVisuals.lastPercussionTime || now - state.rampVisuals.lastPercussionTime > 500) && totalMovement > 0.001) {
+                const percType = targetColor === 0x00ff00 ? 'incline' : 'decline';
+                const perc = state.surfacePercussion[percType];
+                if (perc) {
+                    // Set panner to neutral center position for consistent stereo placement
+                    perc.panner.positionX.value = state.camera.position.x;
+                    perc.panner.positionY.value = state.camera.position.y - 0.5;  // Just below camera
+                    perc.panner.positionZ.value = state.camera.position.z;
+                    perc.volume.volume.value = -3; // Audible volume
+                    perc.instrument.triggerAttackRelease('8n');
+                    state.rampVisuals.lastPercussionTime = now;
+                }
+            }
+            
+            state.rampVisuals.lastRampPosition = state.camera.position.clone();  // Update with current position
+        }
+    } else {
+        state.rampVisuals.isTraversing = false;
+        state.rampVisuals.lastPercussionTime = 0;
+    }
+}
+
+// Get floor height at position
+function getFloorHeight(x, z) {
+    let floorHeight = CONFIG.FLOOR_BASE;
+    
+    if (!state.terrain) return floorHeight;
+    
+    state.terrain.forEach(terrain => {
+        if (terrain.userData.type === 'ramp') {
+            const rampX = terrain.position.x;
+            const rampZ = terrain.position.z;
+            const rampWidth = 4;
+            const rampLength = 6;
+            
+            if (Math.abs(x - rampX) < rampWidth/2 && 
+                Math.abs(z - rampZ) < rampLength/2) {
+                const zOffset = z - rampZ + rampLength/2;
+                const progress = zOffset / rampLength;
+                floorHeight = progress * CONFIG.RAMP_HEIGHT;
+            }
+        } else if (terrain.userData.type === 'hole') {
+            const holeX = terrain.position.x;
+            const holeZ = terrain.position.z;
+            const holeSize = 3;
+            const edgeBuffer = 0.5;
+            
+            if (Math.abs(x - holeX) < (holeSize/2 - edgeBuffer) && 
+                Math.abs(z - holeZ) < (holeSize/2 - edgeBuffer)) {
+                floorHeight = Math.max(CONFIG.FLOOR_BASE, terrain.userData.depth + 1);
+            } else if (Math.abs(x - holeX) < holeSize/2 && 
+                       Math.abs(z - holeZ) < holeSize/2) {
+                return 'blocked';
+            }
+        }
+    });
+    
+    return floorHeight;
+}
+
+// Play bar
+function playBar() {
+    if (!state.isAudioRunning) return;
+    
+    state.beatTimeouts.forEach(timeout => clearTimeout(timeout));
+    state.beatTimeouts = [];
+    
+    // Play sky melodic patterns
+    scheduleSkyMelodic();
+    
+    // Count active voices
+    let totalActiveVoices = 0;
+    let activeObjects = [];
+    
+    state.sceneObjects.forEach(obj => {
+        const userData = obj.userData;
+        if (userData.isPlaying && userData.melody[state.currentBar - 1]) {
+            const octaves = calculateOctaves(obj);
+            totalActiveVoices += octaves.length;
+            activeObjects.push({ obj, octaves });
+        }
+    });
+    
+    let globalReduction = 0;
+    if (totalActiveVoices > 4) {
+        globalReduction = -Math.min(20, 4 * Math.log2(totalActiveVoices));
+    }
+    
+    // Play melodies
+    activeObjects.forEach(({ obj, octaves }) => {
+        const userData = obj.userData;
+        const barNotes = userData.melody[state.currentBar - 1];
+        
+        const octaveCount = octaves.length;
+        let baseVolumeReduction = globalReduction;
+        
+        if (octaveCount > 1) {
+            baseVolumeReduction += -Math.min(18, 6 * Math.log2(octaveCount));
+        }
+        
+        const dx = state.camera.position.x - obj.position.x;
+        const dz = state.camera.position.z - obj.position.z;
+        const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+        
+        if (horizontalDistance < 2) {
+            const proximityFactor = (2 - horizontalDistance) / 2;
+            baseVolumeReduction += -15 * proximityFactor;
+        }
+        
+        if (userData.category === 1 && octaveCount > 1) {
+            baseVolumeReduction -= 6;
+        }
+        
+        const activeCat1Count = activeObjects.filter(a => a.obj.userData.category === 1).length;
+        if (userData.category === 1 && activeCat1Count > 1) {
+            baseVolumeReduction -= 4 * (activeCat1Count - 1);
+        }
+        
+        const originalVolume = userData.volume.volume.value;
+        
+        octaves.forEach((octave, octIndex) => {
+            let octaveSpecificReduction = 0;
+            if (octave <= 2) {
+                octaveSpecificReduction = -12;
+            } else if (octave === 3) {
+                octaveSpecificReduction = -6;
+            } else if (octave === 4) {
+                octaveSpecificReduction = -3;
+            }
+            
+            userData.volume.volume.rampTo(originalVolume + baseVolumeReduction + octaveSpecificReduction, 0.05);
+            
+            barNotes.forEach((note, noteIndex) => {
+                if (!(userData.category === 1 && note.sustained)) {
+                    const duration = userData.category === 1 ? '1n.' : note.duration;
+                    const densityMultiplier = Math.min(3, totalActiveVoices / 4);
+                    const objectOffset = activeObjects.indexOf({ obj, octaves }) * 0.01 * densityMultiplier;
+                    const octaveOffset = octIndex * 0.012 * densityMultiplier;
+                    const noteOffset = noteIndex * 0.004;
+                    const randomOffset = Math.random() * 0.008;
+                    const microDelay = objectOffset + octaveOffset + noteOffset + randomOffset;
+                    const categoryDelay = userData.category === 1 ? (0.02 * densityMultiplier) : 0;
+                    
+                    userData.synth.triggerAttackRelease(
+                        `${note.note}${octave}`,
+                        duration,
+                        Tone.now() + note.time + microDelay + categoryDelay
+                    );
+                }
+            });
+        });
+    });
+    
+    // Bass drum
+    for (let beat = 0; beat < 4; beat++) {
+        const timeout = setTimeout(() => {
+            const currentRate = calculateUserVelocity();
+            
+            if (currentRate === 1) {
+                if (beat === 0 || beat === 2) {
+                    state.bassDrum.triggerAttackRelease('C1', '8n');
+                }
+            } else if (currentRate === 2) {
+                state.bassDrum.triggerAttackRelease('C1', '8n');
+            }
+        }, beat * 461.5);
+        
+        state.beatTimeouts.push(timeout);
+    }
+    
+    document.getElementById('barNumber').textContent = `${state.currentBar}/32`;
+    document.getElementById('hudBar').textContent = `${state.currentBar}/32`;
+    
+    state.currentBar++;
+    if (state.currentBar > 32) state.currentBar = 1;
+    
+    setTimeout(() => playBar(), 1846);
+}
+
+// Calculate user velocity
+function calculateUserVelocity() {
+    const isWalking = (state.keys['w'] || state.keys['s'] || state.keys['a'] || state.keys['d']) && !state.keys['shift'];
+    const isRunning = (state.keys['w'] || state.keys['s'] || state.keys['a'] || state.keys['d']) && state.keys['shift'];
+    
+    let targetVelocity = 0;
+    if (isRunning) {
+        targetVelocity = 180;
+    } else if (isWalking) {
+        targetVelocity = 60;
+    } else {
+        targetVelocity = 0;
+    }
+    
+    const smoothingFactor = 0.2;
+    state.userVelocity = state.userVelocity + (targetVelocity - state.userVelocity) * smoothingFactor;
+    
+    document.getElementById('speedValue').textContent = Math.round(state.userVelocity);
+    
+    const moveState = !isWalking && !isRunning ? 'STOP' : 
+                      isRunning ? 'RUN' : 'WALK';
+    document.getElementById('hudMove').textContent = moveState;
+
+    if (!isWalking && !isRunning) return 0;
+    else if (isWalking) return 1;
+    else return 2;
+}
+
+// Start audio
+async function startAudio() {
+    if (!state.bassDrum) {
+        await initAudio();
+    }
+    
+    state.isAudioRunning = true;
+    Tone.Transport.start();
+    document.getElementById('startBtn').classList.add('active');
+    document.getElementById('startBtn').textContent = '⏸ Audio Running';
+    
+    setSkyCondition('clear');
+    
+    // Initialize sky item UI
+    document.getElementById('timeStatus').textContent = state.skyItems.currentTime === 'day' ? 'Day' : 'Night';
+    document.getElementById('cloudStatus').textContent = state.skyItems.cloudPresence ? 'Present' : 'None';
+    
+    playBar();
+}
+
+// Stop audio
+function stopAudio() {
+    state.isAudioRunning = false;
+    Tone.Transport.stop();
+    Tone.Transport.cancel();
+    
+    state.beatTimeouts.forEach(timeout => clearTimeout(timeout));
+    state.beatTimeouts = [];
+    
+    state.sceneObjects.forEach(obj => {
+        obj.userData.isPlaying = false;
+    });
+    
+    document.getElementById('startBtn').classList.remove('active');
+    document.getElementById('startBtn').textContent = '▶ Start Audio';
+    state.currentBar = 1;
+}
+
+// Update camera
+function updateCamera() {
+    const deltaTime = state.clock.getDelta();
+    
+    const walkSpeed = 1.0;
+    const runSpeed = 3.0;
+    const moveSpeed = (state.keys['shift'] ? runSpeed : walkSpeed) * deltaTime;
+    
+    const turnSpeed = 2.0 * deltaTime;
+    
+    if (state.keys['arrowleft']) state.cameraYaw += turnSpeed;
+    if (state.keys['arrowright']) state.cameraYaw -= turnSpeed;
+    
+    state.camera.rotation.y = state.cameraYaw;
+    state.camera.rotation.x = state.cameraPitch;
+    
+    const forward = new THREE.Vector3(0, 0, -1);
+    forward.applyQuaternion(state.camera.quaternion);
+    forward.y = 0;
+    forward.normalize();
+    
+    const right = new THREE.Vector3(1, 0, 0);
+    right.applyQuaternion(state.camera.quaternion);
+    right.y = 0;
+    right.normalize();
+    
+    const proposedPos = state.camera.position.clone();
+    
+    if (state.keys['w']) proposedPos.add(forward.multiplyScalar(moveSpeed));
+    if (state.keys['s']) proposedPos.add(forward.multiplyScalar(-moveSpeed));
+    if (state.keys['a']) proposedPos.add(right.multiplyScalar(-moveSpeed));
+    if (state.keys['d']) proposedPos.add(right.multiplyScalar(moveSpeed));
+    
+    const floorCheck = getFloorHeight(proposedPos.x, proposedPos.z);
+    
+    if (floorCheck !== 'blocked') {
+        state.camera.position.x = proposedPos.x;
+        state.camera.position.z = proposedPos.z;
+        
+        const targetY = (typeof floorCheck === 'number' ? floorCheck : CONFIG.FLOOR_BASE) + CONFIG.CAMERA_HEIGHT;
+        state.camera.position.y += (targetY - state.camera.position.y) * 0.1;
+    }
+    
+    state.camera.position.x = Math.max(-9, Math.min(9, state.camera.position.x));
+    state.camera.position.z = Math.max(-9, Math.min(9, state.camera.position.z));
+    
+    document.getElementById('position').textContent = 
+        `X:${state.camera.position.x.toFixed(1)} Y:${state.camera.position.y.toFixed(1)} Z:${state.camera.position.z.toFixed(1)}`;
+    document.getElementById('rotation').textContent = 
+        `${(state.cameraYaw * 180 / Math.PI).toFixed(0)}°`;
+}
+
+// Animation loop
+function animate() {
+    requestAnimationFrame(animate);
+    
+    state.frameCount++;
+    if (Date.now() - state.lastFPSUpdate > 1000) {
+        document.getElementById('hudFPS').textContent = state.frameCount;
+        state.frameCount = 0;
+        state.lastFPSUpdate = Date.now();
+    }
+
+    updateCamera();
+    
+    // Car movement
+    if (state.sceneObjects[2]) {
+        const time = Date.now() * 0.0003;
+        const newX = 1 + 5 * Math.sin(time);
+        const newZ = 0 + 3 * Math.cos(time);
+        
+        const oldX = state.sceneObjects[2].position.x;
+        const oldZ = state.sceneObjects[2].position.z;
+        
+        state.sceneObjects[2].position.x = newX;
+        state.sceneObjects[2].position.z = newZ;
+        
+        const dx = newX - oldX;
+        const dz = newZ - oldZ;
+        if (dx !== 0 || dz !== 0) {
+            state.sceneObjects[2].rotation.y = Math.atan2(-dx, -dz);
+        }
+    }
+    
+    // Bird movement
+    if (state.sceneObjects[1]) {
+        const time = Date.now() * 0.001;
+        state.sceneObjects[1].position.x = -2 + Math.sin(time * 0.7) * 3;
+        state.sceneObjects[1].position.z = 2 + Math.sin(time * 1.4) * 2;
+        state.sceneObjects[1].position.y = 2.5 + Math.sin(time) * 0.3;
+        state.sceneObjects[1].rotation.z = Math.cos(time * 0.7) * 0.3;
+        state.sceneObjects[1].rotation.x = Math.sin(time) * 0.1;
+    }
+    
+    if (state.isAudioRunning) {
+        updateAudio();
+        updateProximity();
+        updateSurfacePercussion();
+        updateSkyAudio();
+        updateRampVisuals();
+    }
+    
+    state.renderer.render(state.scene, state.camera);
+}
+
+// Input handlers
+document.addEventListener('keydown', (e) => {
+    state.keys[e.key.toLowerCase()] = true;
+});
+
+document.addEventListener('keyup', (e) => {
+    state.keys[e.key.toLowerCase()] = false;
+    
+    if (e.key.toLowerCase() === 'w' || e.key.toLowerCase() === 's' || 
+        e.key.toLowerCase() === 'a' || e.key.toLowerCase() === 'd' ||
+        e.key === 'Shift') {
+        if (!state.keys['w'] && !state.keys['s'] && !state.keys['a'] && !state.keys['d']) {
+            state.beatTimeouts.forEach(timeout => clearTimeout(timeout));
+            state.beatTimeouts = [];
+        }
+    }
+    
+    // Weather controls
+    if (e.key === '1') setSkyCondition('clear');
+    if (e.key === '2') setSkyCondition('wind');
+    if (e.key === '3') setSkyCondition('rain');
+    if (e.key === '4') setSkyCondition('storm');
+    
+    // Sky item controls
+    if (e.key === '5') toggleDayNight();
+    if (e.key === '6') toggleClouds();
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (document.pointerLockElement === document.body) {
+        state.mouseX += e.movementX;
+        state.mouseY += e.movementY;
+        state.cameraYaw = -state.mouseX * 0.002;
+        state.cameraPitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, -state.mouseY * 0.002));
+    }
+});
+
+document.getElementById('canvas').addEventListener('click', () => {
+    document.body.requestPointerLock();
+});
+
+// Handle resize
+window.addEventListener('resize', () => {
+    state.camera.aspect = window.innerWidth / window.innerHeight;
+    state.camera.updateProjectionMatrix();
+    state.renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Initialize everything
+initThree();
+createObjects();
+animate();
+    </script>
+</body>
+</html>
