@@ -1,0 +1,1795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toneduel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            overflow: hidden;
+        }
+
+        #canvas {
+            display: block;
+            cursor: none;
+        }
+
+        .game-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+        }
+
+        .game-info-left {
+            display: block;
+            font-size: 16px;
+            color: #bbb;
+            margin-bottom: 8px;
+            text-align: left;
+            text-shadow: 2px 2px 6px rgba(0,0,0,1), 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        .score-display {
+            display: block;
+            font-size: 36px;
+            font-weight: bold;
+            color: #4c6ef5;
+            text-shadow: 2px 2px 6px rgba(0,0,0,1), 0 0 20px rgba(0,0,0,0.8);
+            margin-bottom: 8px;
+            text-align: left;
+        }
+
+        #smashCounter {
+            position: fixed !important;
+            top: 20px !important;
+            right: 20px !important;
+            left: auto !important;
+            bottom: auto !important;
+            font-size: 16px;
+            color: #ffd700;
+            font-weight: bold;
+            text-shadow: 2px 2px 6px rgba(0,0,0,1), 0 0 20px rgba(0,0,0,0.8);
+            z-index: 200;
+            margin: 0;
+            padding: 0;
+        }
+
+        .mode-select {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border-radius: 10px;
+            border: 2px solid #4c6ef5;
+            text-align: center;
+            z-index: 200;
+        }
+
+        .mode-select h2 {
+            margin-bottom: 30px;
+            color: #4c6ef5;
+        }
+
+        .mode-button {
+            display: block;
+            width: 200px;
+            margin: 15px auto;
+            padding: 15px;
+            background: #4c6ef5;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .mode-button:hover {
+            background: #364fc7;
+        }
+
+        .controls-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .controls-info .key {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #4c6ef5;
+            border-radius: 3px;
+            margin: 0 3px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .smash-counter {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 16px;
+            color: #ffd700;
+        }
+
+        .pause-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px 60px;
+            border-radius: 10px;
+            border: 2px solid #4c6ef5;
+            text-align: center;
+            z-index: 300;
+        }
+
+        .pause-overlay h2 {
+            margin: 0 0 20px 0;
+            color: #4c6ef5;
+            font-size: 48px;
+            letter-spacing: 4px;
+        }
+
+        .pause-overlay p {
+            margin: 0;
+            color: #aaa;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div id="modeSelect" class="mode-select">
+        <h2>Select Difficulty</h2>
+        <button class="mode-button" onclick="GAME.selectMode('easy')">Easy</button>
+        <button class="mode-button" onclick="GAME.selectMode('moderate')">Moderate</button>
+        <button class="mode-button" onclick="GAME.selectMode('hard')">Hard</button>
+    </div>
+
+    <div id="gameUI" class="game-ui hidden">
+        <div class="game-info-left">
+            Round <span id="roundNumber">1</span> | <span id="gameMode">Easy</span> Mode
+        </div>
+        <div class="score-display">
+            <span id="playerScore">0</span> - <span id="opponentScore">0</span>
+        </div>
+    </div>
+    
+    <!-- Smash counter completely separate in top-right -->
+    <div id="smashCounter" class="smash-counter" style="position: absolute; top: 20px; right: 20px; display: none;">
+        Smashes: <span id="smashesLeft">3</span>/3
+    </div>
+
+    <div id="pauseIndicator" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff0; display: none; z-index: 101; font-size: 24px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); background: rgba(0,0,0,0.7); padding: 20px; border-radius: 10px;">
+        PAUSED - Press P or ESC to resume
+    </div>
+
+    <div id="pauseOverlay" class="pause-overlay hidden">
+        <h2>PAUSED</h2>
+        <p>Press P or ESC to resume</p>
+    </div>
+
+    <div class="controls-info">
+        <div><span class="key">A</span>/<span class="key">D</span> Move Left/Right</div>
+        <div><span class="key">Shift</span> + Move = Run</div>
+        <div><span class="key">Space</span> Smash (when stationary)</div>
+        <div><span class="key">P</span> or <span class="key">ESC</span> Pause/Resume</div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <script>
+        // Game namespace
+        const GAME = {};
+        
+        // Game constants
+        GAME.ROOM_WIDTH = 15;  // X-axis
+        GAME.ROOM_LENGTH = 30; // Z-axis
+        GAME.ROOM_HEIGHT = 8;  // Y-axis
+        GAME.PADDLE_WIDTH = 1;
+        GAME.PADDLE_HEIGHT = 1.6;
+        GAME.BALL_RADIUS = 0.5;
+        GAME.CAMERA_HEIGHT = 1.6;
+        GAME.PADDLE_OFFSET = 1.5; // Distance from back walls
+        
+        // Game state
+        GAME.mode = 'easy';
+        GAME.state = 'menu'; // menu, playing, paused, gameover
+        GAME.playerScore = 0;
+        GAME.opponentScore = 0;
+        GAME.roundNumber = 1;
+        GAME.currentBar = 1;
+        GAME.smashesLeft = 3;
+        GAME.lastPaddleContact = 0;
+        GAME.ballBaseSpeed = 0.045;   // Updated to match new Easy mode default
+        GAME.ballCurrentSpeed = 0.045; // Updated to match new Easy mode default
+        GAME.ballSpecialSpeed = null;
+        GAME.roundStartTime = 0;
+        GAME.lastBallContact = 0;
+        GAME.ballInDetectionZone = false;
+        GAME.lastDetectionCross = 0;
+        GAME.isAudioRunning = false;
+        GAME.lastScorer = null;  // Track who scored last (player/opponent)
+        GAME.opponentMissing = false;
+        GAME.opponentMissDecided = false;
+        GAME.opponentWillMiss = false;
+        GAME.opponentMissTarget = 0;
+        GAME.lastWallCollision = 0;
+        GAME.isPaused = false;
+        GAME.pauseTime = 0;
+        GAME.totalPausedTime = 0;
+        GAME.scoringInProgress = false;
+        
+        // Movement state
+        GAME.keys = {};
+        GAME.playerVelocity = 0;
+        GAME.playerMovingLeft = false;
+        GAME.playerMovingRight = false;
+        GAME.playerRunning = false;
+        GAME.lastSpacePress = 0;
+        
+        // Ball state
+        GAME.ballVelocity = new THREE.Vector3();
+        GAME.ballStartVariations = [
+            {side: 'player', offset: new THREE.Vector3(-0.5, 0, -1), angle: 20},
+            {side: 'player', offset: new THREE.Vector3(0.5, 0, -1), angle: -20},
+            {side: 'player', offset: new THREE.Vector3(-0.3, 0, -1.5), angle: 25},
+            {side: 'player', offset: new THREE.Vector3(0.3, 0, -1.5), angle: -25},
+            {side: 'player', offset: new THREE.Vector3(-0.7, 0, -1.2), angle: 30},
+            {side: 'player', offset: new THREE.Vector3(0.7, 0, -1.2), angle: -30},
+            {side: 'opponent', offset: new THREE.Vector3(-0.5, 0, 1), angle: 20},
+            {side: 'opponent', offset: new THREE.Vector3(0.5, 0, 1), angle: -20},
+            {side: 'opponent', offset: new THREE.Vector3(-0.3, 0, 1.5), angle: 25},
+            {side: 'opponent', offset: new THREE.Vector3(0.3, 0, 1.5), angle: -25},
+            {side: 'opponent', offset: new THREE.Vector3(-0.7, 0, 1.2), angle: 30},
+            {side: 'opponent', offset: new THREE.Vector3(0.7, 0, 1.2), angle: -30}
+        ];
+        
+        // Three.js setup
+        GAME.scene = new THREE.Scene();
+        GAME.scene.fog = new THREE.Fog(0x1a1a2e, 1, 50);
+        
+        GAME.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        GAME.camera.position.set(0, GAME.CAMERA_HEIGHT, GAME.ROOM_LENGTH/2 - GAME.PADDLE_OFFSET);
+        GAME.camera.lookAt(0, GAME.CAMERA_HEIGHT, 0);
+        
+        GAME.renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+        GAME.renderer.setSize(window.innerWidth, window.innerHeight);
+        GAME.renderer.setClearColor(0x1a1a2e);
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        GAME.scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(1, 1, 0.5);
+        GAME.scene.add(directionalLight);
+        
+        // Create room
+        function createRoom() {
+            // Room wireframe
+            const roomGeometry = new THREE.BoxGeometry(GAME.ROOM_WIDTH, GAME.ROOM_HEIGHT, GAME.ROOM_LENGTH);
+            const roomEdges = new THREE.EdgesGeometry(roomGeometry);
+            const roomMaterial = new THREE.LineBasicMaterial({ color: 0x4c6ef5, opacity: 0.3, transparent: true });
+            const roomWireframe = new THREE.LineSegments(roomEdges, roomMaterial);
+            roomWireframe.position.y = GAME.ROOM_HEIGHT / 2;
+            GAME.scene.add(roomWireframe);
+            
+            // Floor with surface strips
+            const stripWidth = GAME.ROOM_WIDTH / 4;
+            
+            // East strip (road - red tint)
+            const eastStripGeometry = new THREE.PlaneGeometry(stripWidth, GAME.ROOM_LENGTH);
+            const eastStripMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x553333, 
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.3
+            });
+            const eastStrip = new THREE.Mesh(eastStripGeometry, eastStripMaterial);
+            eastStrip.rotation.x = -Math.PI / 2;
+            eastStrip.position.set(-GAME.ROOM_WIDTH/2 + stripWidth/2, 0.01, 0);
+            GAME.scene.add(eastStrip);
+            
+            // Grass strips (green tint)
+            const grassGeometry = new THREE.PlaneGeometry(stripWidth * 2, GAME.ROOM_LENGTH);
+            const grassMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x335533, 
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.3
+            });
+            const grassStrip = new THREE.Mesh(grassGeometry, grassMaterial);
+            grassStrip.rotation.x = -Math.PI / 2;
+            grassStrip.position.set(0, 0.01, 0);
+            GAME.scene.add(grassStrip);
+            
+            // West strip (path - blue tint)
+            const westStripGeometry = new THREE.PlaneGeometry(stripWidth, GAME.ROOM_LENGTH);
+            const westStripMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x333355, 
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.3
+            });
+            const westStrip = new THREE.Mesh(westStripGeometry, westStripMaterial);
+            westStrip.rotation.x = -Math.PI / 2;
+            westStrip.position.set(GAME.ROOM_WIDTH/2 - stripWidth/2, 0.01, 0);
+            GAME.scene.add(westStrip);
+            
+            // Floor grid
+            const gridHelper = new THREE.GridHelper(Math.max(GAME.ROOM_WIDTH, GAME.ROOM_LENGTH), 30, 0x444444, 0x222222);
+            GAME.scene.add(gridHelper);
+        }
+        
+        // Create game objects
+        function createGameObjects() {
+            // Player paddle (cyan)
+            const playerGeometry = new THREE.BoxGeometry(GAME.PADDLE_WIDTH, GAME.PADDLE_HEIGHT, 0.1);
+            const playerWireframe = new THREE.WireframeGeometry(playerGeometry);
+            GAME.playerPaddle = new THREE.LineSegments(playerWireframe, new THREE.LineBasicMaterial({ color: 0x00ffff }));
+            GAME.playerPaddle.position.set(0, GAME.PADDLE_HEIGHT/2, GAME.ROOM_LENGTH/2 - GAME.PADDLE_OFFSET);
+            GAME.playerPaddle.userData = { 
+                id: 'player', 
+                synth: null, 
+                volume: null, 
+                isPlaying: false 
+            };
+            GAME.scene.add(GAME.playerPaddle);
+            
+            // Opponent paddle (red)
+            const opponentGeometry = new THREE.BoxGeometry(GAME.PADDLE_WIDTH, GAME.PADDLE_HEIGHT, 0.1);
+            const opponentWireframe = new THREE.WireframeGeometry(opponentGeometry);
+            GAME.opponentPaddle = new THREE.LineSegments(opponentWireframe, new THREE.LineBasicMaterial({ color: 0xff6666 }));
+            GAME.opponentPaddle.position.set(0, GAME.PADDLE_HEIGHT/2, -GAME.ROOM_LENGTH/2 + GAME.PADDLE_OFFSET);
+            GAME.opponentPaddle.userData = { 
+                id: 'opponent', 
+                synth: null, 
+                panner: null,
+                volume: null, 
+                isPlaying: false,
+                targetX: 0,
+                moveSpeed: 0.05
+            };
+            GAME.scene.add(GAME.opponentPaddle);
+            
+            // Ball (yellow)
+            const ballGeometry = new THREE.SphereGeometry(GAME.BALL_RADIUS, 8, 6);
+            const ballWireframe = new THREE.WireframeGeometry(ballGeometry);
+            GAME.ball = new THREE.LineSegments(ballWireframe, new THREE.LineBasicMaterial({ color: 0xffff00 }));
+            GAME.ball.position.set(0, GAME.CAMERA_HEIGHT, 0);
+            GAME.ball.userData = { 
+                id: 'ball', 
+                synth: null,
+                panner: null, 
+                volume: null, 
+                isPlaying: false,
+                currentNote: 'C'
+            };
+            GAME.scene.add(GAME.ball);
+        }
+        
+        // Initialize audio system
+        GAME.initAudio = async function() {
+            await Tone.start();
+            
+            // Set tempo
+            Tone.Transport.bpm.value = 130;
+            Tone.Transport.timeSignature = [4, 4];
+            
+            // Bass drum for movement
+            GAME.bassDrum = new Tone.MembraneSynth({ volume: -12 }).toDestination();
+            
+            // Ride cymbal for successful player hits
+            // Player paddle hit synth - FMSynth for musical note
+            GAME.playerPaddleSynth = new Tone.FMSynth({
+                harmonicity: 3,
+                modulationIndex: 10,
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.3,
+                    sustain: 0,
+                    release: 0.5
+                },
+                modulation: {
+                    type: 'sine'
+                },
+                modulationEnvelope: {
+                    attack: 0.01,
+                    decay: 0.2,
+                    sustain: 0.3,
+                    release: 0.5
+                },
+                volume: -3  // Increased from -6dB for even better audibility
+            }).toDestination();
+            
+            // Opponent paddle hit synth - FMSynth with spatial audio
+            GAME.opponentPaddleSynth = new Tone.FMSynth({
+                harmonicity: 3,
+                modulationIndex: 10,
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.3,
+                    sustain: 0,
+                    release: 0.5
+                },
+                modulation: {
+                    type: 'sine'
+                },
+                modulationEnvelope: {
+                    attack: 0.01,
+                    decay: 0.2,
+                    sustain: 0.3,
+                    release: 0.5
+                },
+                volume: -12  // Base volume, will be adjusted by distance
+            });
+            
+            // Create panner for opponent paddle synth
+            GAME.opponentPaddlePanner = new Tone.Panner(0).toDestination();
+            GAME.opponentPaddleSynth.connect(GAME.opponentPaddlePanner);
+            
+            // Hi-hat for wall collisions (like in demo engine)
+            GAME.hiHat = new Tone.MetalSynth({
+                frequency: 200,
+                envelope: {
+                    attack: 0.001,
+                    decay: 0.06,  // Shorter decay
+                    release: 0.01
+                },
+                harmonicity: 5.1,
+                modulationIndex: 32,
+                resonance: 4000,
+                octaves: 1.5,
+                volume: -14  // Slightly quieter
+            }).toDestination();
+            
+            // Surface drums - rim shots for standing on surfaces
+            GAME.rimShot = new Tone.MetalSynth({
+                frequency: 250,  // Slightly lower frequency
+                envelope: {
+                    attack: 0.001,
+                    decay: 0.02,   // Very short decay for subtle tick
+                    release: 0.01
+                },
+                harmonicity: 12,
+                modulationIndex: 15,  // Reduced for subtlety
+                resonance: 2000,      // Reduced resonance
+                octaves: 0.3,         // Less octave spread
+                volume: -25  // Very subtle volume
+            });
+            
+            // HRTF-inspired filters to make sound come from below
+            GAME.rimShotLowPass = new Tone.Filter({
+                type: 'lowpass',
+                frequency: 5000,  // More muffled for below perception
+                Q: 0.7
+            });
+            
+            GAME.rimShotHighShelf = new Tone.Filter({
+                type: 'highshelf',
+                frequency: 4000,
+                gain: -10  // Strongly reduce highs for below-perception
+            });
+            
+            // Add subtle delay for spatial positioning below
+            GAME.rimShotDelay = new Tone.FeedbackDelay({
+                delayTime: 0.015,  // Very short delay for spatial cue
+                feedback: 0.1,     // Minimal feedback
+                wet: 0.3          // Subtle mix
+            });
+            
+            // Create audio chain for rim shot with HRTF filtering
+            GAME.rimShot.chain(GAME.rimShotLowPass, GAME.rimShotHighShelf, GAME.rimShotDelay, Tone.Destination);
+            
+            GAME.currentSurface = 'grass';
+            GAME.surfacePercussionCounter = 0;  // Track beats for surface percussion patterns
+            
+            // Bell synth for scoring
+            GAME.bellSynth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: { type: 'triangle' },
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.5,
+                    sustain: 0.1,
+                    release: 1.5
+                },
+                volume: -6
+            }).toDestination();
+            
+            // Create panned outputs for conga/bongo detection system
+            GAME.congaPannerLeft = new Tone.Panner(-1).toDestination();
+            GAME.congaPannerRight = new Tone.Panner(1).toDestination();
+            GAME.bongoPannerLeft = new Tone.Panner(-1).toDestination();
+            GAME.bongoPannerRight = new Tone.Panner(1).toDestination();
+            
+            // Template drums will be created on demand in checkDetectionLines
+            GAME.congaDrum = true;  // Flag to indicate system is initialized
+            GAME.bongoDrum = true;  // Flag to indicate system is initialized
+            
+            // Wind/air synth
+            GAME.windSynth = new Tone.Noise({
+                type: 'white',
+                volume: -50,  // Very quiet - just barely audible on grass
+                fadeIn: 0.1
+            }).toDestination();
+            
+            // Ball synth - triangle wave for tubular bells timbre
+            GAME.ball.userData.synth = new Tone.PolySynth(Tone.Synth, {
+                maxPolyphony: 24,  // Increased to handle up to 3 octaves × 8 notes
+                oscillator: { type: 'triangle' },
+                envelope: {
+                    attack: 0.005,  // Quick attack for bell
+                    decay: 0.8,      // Longer decay for bell resonance
+                    sustain: 0.2,    // Lower sustain for bell character
+                    release: 1.2     // Long release for bell ring
+                },
+                volume: 0  // Increased from -3dB for better audibility
+            });
+            
+            // Separate sawtooth synth for octave 5 (proximity warning)
+            GAME.ball.userData.sawtoothSynth = new Tone.PolySynth(Tone.Synth, {
+                maxPolyphony: 8,
+                oscillator: { type: 'sawtooth' },
+                envelope: {
+                    attack: 0.003,  // Very quick attack for urgency
+                    decay: 0.5,     // Shorter decay for brightness
+                    sustain: 0.3,   // More sustain for presence
+                    release: 0.8    // Shorter release
+                },
+                volume: 2  // Slightly louder to cut through
+            });
+            
+            // Ball panner for 3D positioning
+            GAME.ball.userData.panner = new Tone.Panner3D({
+                positionX: 0,
+                positionY: GAME.CAMERA_HEIGHT,
+                positionZ: 0,
+                distanceModel: 'inverse',
+                refDistance: 1,
+                maxDistance: 30,
+                rolloffFactor: 1
+            });
+            
+            GAME.ball.userData.volume = new Tone.Volume(0);
+            GAME.ball.userData.synth.chain(GAME.ball.userData.panner, GAME.ball.userData.volume, Tone.Destination);
+            // Connect sawtooth synth through same spatial chain
+            GAME.ball.userData.sawtoothSynth.chain(GAME.ball.userData.panner, GAME.ball.userData.volume, Tone.Destination);
+            
+            // Opponent synth - triangle wave
+            GAME.opponentPaddle.userData.synth = new Tone.PolySynth(Tone.Synth, {
+                maxPolyphony: 8,  // Increased for 8-note patterns
+                oscillator: { type: 'triangle' },
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.1,
+                    sustain: 0.5,
+                    release: 0.2
+                },
+                volume: -12  // Further reduced from -9dB
+            });
+            
+            // Use simple stereo panner instead of 3D panner for more control
+            GAME.opponentPaddle.userData.panner = new Tone.Panner(0);  // Center pan
+            
+            GAME.opponentPaddle.userData.volume = new Tone.Volume(0);
+            GAME.opponentPaddle.userData.synth.chain(GAME.opponentPaddle.userData.panner, GAME.opponentPaddle.userData.volume, Tone.Destination);
+            
+            // Player synth - sine wave (player shouldn't hear their own melody)
+            GAME.playerPaddle.userData.synth = new Tone.PolySynth(Tone.Synth, {
+                maxPolyphony: 4,
+                oscillator: { type: 'sine' },
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.1,
+                    sustain: 0.95,
+                    release: 2
+                },
+                volume: -60  // Essentially inaudible to the player themselves
+            });
+            
+            GAME.playerPaddle.userData.volume = new Tone.Volume(0);
+            GAME.playerPaddle.userData.synth.chain(GAME.playerPaddle.userData.volume, Tone.Destination);
+        };
+        
+        // BAR_NOTES for melody generation
+        GAME.BAR_NOTES = {
+            1: ['C', 'E', 'G', 'A'], 2: ['D', 'E', 'G', 'B'], 3: ['C', 'E', 'G', 'A'], 4: ['C', 'D', 'F', 'A'],
+            5: ['C', 'E', 'G', 'A'], 6: ['D', 'E', 'G', 'B'], 7: ['C', 'E', 'G', 'A'], 8: ['C', 'D', 'F', 'A'],
+            9: ['C', 'E', 'G', 'A'], 10: ['D', 'E', 'G', 'B'], 11: ['C', 'E', 'G', 'A'], 12: ['C', 'D', 'F', 'A'],
+            13: ['C', 'E', 'G', 'A'], 14: ['D', 'E', 'G', 'B'], 15: ['C', 'E', 'G', 'A'], 16: ['C', 'D', 'F', 'A'],
+            17: ['C', 'E', 'G', 'A'], 18: ['D', 'E', 'G', 'B'], 19: ['C', 'E', 'G', 'A'], 20: ['C', 'D', 'F', 'A'],
+            21: ['C', 'E', 'G', 'A'], 22: ['D', 'E', 'G', 'B'], 23: ['C', 'E', 'G', 'A'], 24: ['C', 'D', 'F', 'A'],
+            25: ['C', 'E', 'G', 'A'], 26: ['D', 'E', 'G', 'B'], 27: ['C', 'E', 'G', 'A'], 28: ['C', 'D', 'F', 'A'],
+            29: ['C', 'E', 'G', 'A'], 30: ['D', 'E', 'G', 'B'], 31: ['C', 'E', 'G', 'A'], 32: ['C', 'D', 'F', 'A']
+        };
+        
+        // Play bar melody
+        GAME.playBar = function() {
+            if (!GAME.isAudioRunning || GAME.isPaused) return;
+            
+            const barNotes = GAME.BAR_NOTES[GAME.currentBar];
+            
+            // Select ONE note for the ball to play throughout this entire bar
+            const ballNote = barNotes[Math.floor(Math.random() * barNotes.length)];
+            GAME.ball.userData.currentNote = ballNote;
+            
+            // Release all currently playing notes to prevent overlap
+            if (GAME.ball.userData.synth) {
+                GAME.ball.userData.synth.releaseAll();
+            }
+            if (GAME.ball.userData.sawtoothSynth) {
+                GAME.ball.userData.sawtoothSynth.releaseAll();
+            }
+            
+            // Clear any existing ball note timeouts
+            if (!GAME.ballNoteTimeouts) {
+                GAME.ballNoteTimeouts = [];
+            }
+            GAME.ballNoteTimeouts.forEach(timeout => clearTimeout(timeout));
+            GAME.ballNoteTimeouts = [];
+            
+            // Schedule each eighth note individually with dynamic distance checking
+            for (let i = 0; i < 8; i++) {
+                const noteTimeout = setTimeout(() => {
+                    // Check if still playing (might have paused)
+                    if (!GAME.isAudioRunning || GAME.isPaused) return;
+                    
+                    // Recalculate distance at the time this note plays
+                    const currentDistance = Math.abs(GAME.ball.position.z - GAME.camera.position.z);
+                    
+                    // Determine which octaves to play based on current proximity
+                    const octavesToPlay = [];
+                    octavesToPlay.push(4); // Always play octave 4 (base)
+                    
+                    if (currentDistance <= 8) {
+                        octavesToPlay.push(3); // Add octave 3 when within 8 meters
+                    }
+                    
+                    if (currentDistance <= 4) {
+                        octavesToPlay.push(5); // Add octave 5 when within 4 meters
+                    }
+                    
+                    // Play the ball note in appropriate octaves
+                    octavesToPlay.forEach(octave => {
+                        if (octave === 5) {
+                            // Use sawtooth synth for octave 5 (bright warning sound)
+                            GAME.ball.userData.sawtoothSynth.triggerAttackRelease(
+                                `${ballNote}5`, 
+                                '8n'
+                            );
+                        } else {
+                            // Use triangle synth for octaves 3 and 4
+                            GAME.ball.userData.synth.triggerAttackRelease(
+                                `${ballNote}${octave}`, 
+                                '8n'
+                            );
+                        }
+                    });
+                }, i * 230); // Each eighth note is ~230ms apart at 130 BPM
+                
+                // Store timeout ID for potential cancellation
+                GAME.ballNoteTimeouts.push(noteTimeout);
+            }
+            
+            // Determine rhythm pattern based on current bar number
+            let notesPerBar = 4;  // Default to 4 notes (quarter notes)
+            let noteDuration = '4n';
+            let noteSpacing = 0.461;  // Quarter note spacing at 130 BPM
+            
+            if ((GAME.currentBar >= 1 && GAME.currentBar <= 4) ||
+                (GAME.currentBar >= 9 && GAME.currentBar <= 12) ||
+                (GAME.currentBar >= 17 && GAME.currentBar <= 20) ||
+                (GAME.currentBar >= 25 && GAME.currentBar <= 28)) {
+                // One note on every beat (4 notes)
+                notesPerBar = 4;
+                noteDuration = '4n';
+                noteSpacing = 0.461;
+            } else if ((GAME.currentBar >= 5 && GAME.currentBar <= 8) ||
+                       (GAME.currentBar >= 21 && GAME.currentBar <= 24)) {
+                // One note on every second beat (2 notes)
+                notesPerBar = 2;
+                noteDuration = '2n';
+                noteSpacing = 0.923;  // Half note spacing
+            } else if ((GAME.currentBar >= 13 && GAME.currentBar <= 16) ||
+                       (GAME.currentBar >= 29 && GAME.currentBar <= 32)) {
+                // One note on every beat and half beat (8 notes)
+                notesPerBar = 8;
+                noteDuration = '8n';
+                noteSpacing = 0.23;  // Eighth note spacing
+            }
+            
+            // Play opponent melody - always audible to maintain awareness
+            if (GAME.opponentPaddle.userData.synth) {
+                GAME.opponentPaddle.userData.synth.releaseAll();  // Clear previous notes
+            }
+            for (let i = 0; i < notesPerBar; i++) {
+                const note = barNotes[i % barNotes.length];
+                GAME.opponentPaddle.userData.synth.triggerAttackRelease(
+                    `${note}3`, 
+                    noteDuration, 
+                    Tone.now() + i * noteSpacing
+                );
+            }
+            
+            // Player melody - follows same rhythm pattern but player shouldn't hear it
+            // Volume set to -60dB in synth initialization (essentially inaudible)
+            // This melody would be transmitted to opponent in multiplayer version
+            if (GAME.playerPaddle.userData.synth) {
+                GAME.playerPaddle.userData.synth.releaseAll();  // Clear previous notes
+            }
+            for (let i = 0; i < notesPerBar; i++) {
+                const note = barNotes[i % barNotes.length];
+                GAME.playerPaddle.userData.synth.triggerAttackRelease(
+                    `${note}2`, 
+                    noteDuration, 
+                    Tone.now() + i * noteSpacing
+                );
+            }
+            
+            GAME.currentBar++;
+            if (GAME.currentBar > 32) GAME.currentBar = 1;
+            
+            // Store timeout ID so it can be cancelled if needed
+            GAME.melodyTimeout = setTimeout(() => GAME.playBar(), 1846); // ~1.846 seconds per bar at 130 BPM
+        };
+        
+        // Play movement drum pattern
+        GAME.playMovementDrum = function() {
+            if (!GAME.isAudioRunning || GAME.isPaused) return;
+            
+            // Calculate movement rate
+            let drumRate = 0;
+            if (GAME.playerMovingLeft || GAME.playerMovingRight) {
+                drumRate = GAME.playerRunning ? 2 : 1;
+            }
+            
+            // Play appropriate drum pattern
+            if (drumRate === 1) {
+                // Walking - every beat
+                GAME.bassDrum.triggerAttackRelease('C1', '8n');
+            } else if (drumRate === 2) {
+                // Running - eighth notes
+                GAME.bassDrum.triggerAttackRelease('C1', '16n');
+                setTimeout(() => {
+                    if (!GAME.isPaused) GAME.bassDrum.triggerAttackRelease('C1', '16n');
+                }, 230);
+            }
+            
+            // Schedule next drum hit
+            GAME.drumTimeout = setTimeout(() => GAME.playMovementDrum(), 461); // Quarter note at 130 BPM
+        };
+        
+        // Play surface percussion patterns
+        GAME.playSurfacePercussion = function() {
+            if (!GAME.isAudioRunning || GAME.isPaused) return;
+            
+            GAME.surfacePercussionCounter++;
+            
+            // Determine current surface based on player position
+            const stripWidth = GAME.ROOM_WIDTH / 4;
+            const playerX = GAME.playerPaddle ? GAME.playerPaddle.position.x : 0;
+            
+            if (playerX < -GAME.ROOM_WIDTH/2 + stripWidth) {
+                GAME.currentSurface = 'road';
+            } else if (playerX > GAME.ROOM_WIDTH/2 - stripWidth) {
+                GAME.currentSurface = 'path';
+            } else {
+                GAME.currentSurface = 'grass';
+            }
+            
+            // Play rim shot patterns based on surface
+            if (GAME.currentSurface === 'road') {
+                // Road: rim shot on every half-beat (every call since we're called every half-beat)
+                GAME.rimShot.triggerAttackRelease('16n');
+            } else if (GAME.currentSurface === 'path') {
+                // Path: double strike pattern on every second beat (every 4 half-beats)
+                if (GAME.surfacePercussionCounter % 4 === 0) {
+                    // Double strike pattern
+                    GAME.rimShot.triggerAttackRelease('32n');
+                    setTimeout(() => {
+                        if (GAME.rimShot && GAME.isAudioRunning) {
+                            GAME.rimShot.triggerAttackRelease('32n');
+                        }
+                    }, 50); // Quick double strike
+                }
+            }
+            // Grass: no percussion
+            
+            // Schedule next percussion check (every half-beat = 230.5ms at 130 BPM)
+            GAME.surfacePercussionTimeout = setTimeout(() => GAME.playSurfacePercussion(), 230.5);
+        };
+        
+        // Update wind sound based on player position
+        GAME.updateWind = function() {
+            if (!GAME.windSynth || !GAME.isAudioRunning || GAME.isPaused) return;
+            
+            const playerX = GAME.playerPaddle.position.x;
+            const stripWidth = GAME.ROOM_WIDTH / 4;  // 3.75 meters
+            const grassLeftEdge = -stripWidth;       // -3.75
+            const grassRightEdge = stripWidth;       // +3.75
+            
+            let windVolume = -60;  // Default silent
+            let windPan = 0;       // Center pan by default
+            
+            // GRASS AREA: Silent at center, gradually increases
+            if (playerX >= grassLeftEdge && playerX <= grassRightEdge) {
+                // On grass - volume based on distance from center
+                const distanceFromCenter = Math.abs(playerX);
+                const maxGrassDistance = stripWidth; // 3.75 meters to edge
+                const normalizedDistance = distanceFromCenter / maxGrassDistance; // 0 at center, 1 at edges
+                
+                // Volume: silent at center (-60dB) to -30dB at grass edges
+                if (distanceFromCenter < 0.1) {
+                    // Very close to center - effectively silent
+                    windVolume = -60;
+                } else {
+                    windVolume = -50 + (normalizedDistance * 20); // -50dB near center to -30dB at edges
+                }
+                
+                // Panning: gradual across grass width
+                windPan = playerX / stripWidth;  // -1 at left edge, 0 at center, +1 at right edge
+                
+            } else if (playerX < grassLeftEdge) {
+                // ROAD (EAST STRIP) - Left side
+                windPan = -1;  // Full left pan
+                
+                // Base volume jumps to -30dB when entering strip
+                // Then increases to -15dB at wall
+                const distanceFromGrassEdge = Math.abs(playerX - grassLeftEdge);
+                const distanceFromWall = Math.abs(playerX - (-GAME.ROOM_WIDTH/2));
+                const maxDistanceOnStrip = stripWidth;  // 3.75 meters
+                
+                // Normalize distance from wall (0 at grass edge, 1 at wall)
+                const normalizedWallDistance = 1 - (distanceFromWall / maxDistanceOnStrip);
+                
+                // Volume: -30dB at entry to -15dB at wall
+                windVolume = -30 + (normalizedWallDistance * 15);
+                
+            } else if (playerX > grassRightEdge) {
+                // PATH (WEST STRIP) - Right side
+                windPan = 1;  // Full right pan
+                
+                // Base volume jumps to -30dB when entering strip
+                // Then increases to -15dB at wall
+                const distanceFromGrassEdge = Math.abs(playerX - grassRightEdge);
+                const distanceFromWall = Math.abs(playerX - (GAME.ROOM_WIDTH/2));
+                const maxDistanceOnStrip = stripWidth;  // 3.75 meters
+                
+                // Normalize distance from wall (0 at grass edge, 1 at wall)
+                const normalizedWallDistance = 1 - (distanceFromWall / maxDistanceOnStrip);
+                
+                // Volume: -30dB at entry to -15dB at wall
+                windVolume = -30 + (normalizedWallDistance * 15);
+            }
+            
+            // Apply wind settings
+            GAME.windSynth.volume.value = windVolume;
+            
+            // Create panner if it doesn't exist
+            if (!GAME.windPanner) {
+                GAME.windPanner = new Tone.Panner(0).toDestination();
+                GAME.windSynth.disconnect();
+                GAME.windSynth.connect(GAME.windPanner);
+            }
+            
+            // Update pan position
+            GAME.windPanner.pan.value = windPan;
+        };
+        
+        // Update audio positions
+        GAME.updateAudioPositions = function() {
+            if (!GAME.isAudioRunning) return;
+            
+            // Update ball panner position
+            if (GAME.ball.userData.panner) {
+                GAME.ball.userData.panner.positionX.value = GAME.ball.position.x;
+                GAME.ball.userData.panner.positionY.value = GAME.ball.position.y;
+                GAME.ball.userData.panner.positionZ.value = GAME.ball.position.z;
+            }
+            
+            // Update opponent panner position (simple stereo pan based on X position)
+            if (GAME.opponentPaddle.userData.panner) {
+                // Calculate relative X position for stereo panning
+                const relativeX = GAME.opponentPaddle.position.x - GAME.camera.position.x;
+                // Normalize to -1 to 1 range (with some limiting)
+                const panValue = Math.max(-1, Math.min(1, relativeX / 5));
+                GAME.opponentPaddle.userData.panner.pan.value = panValue;
+            }
+            
+            // Update listener position (player)
+            Tone.Listener.positionX.value = GAME.camera.position.x;
+            Tone.Listener.positionY.value = GAME.camera.position.y;
+            Tone.Listener.positionZ.value = GAME.camera.position.z;
+            
+            // Listener always faces forward (negative Z)
+            Tone.Listener.forwardX.value = 0;
+            Tone.Listener.forwardY.value = 0;
+            Tone.Listener.forwardZ.value = -1;
+            
+            Tone.Listener.upX.value = 0;
+            Tone.Listener.upY.value = 1;
+            Tone.Listener.upZ.value = 0;
+            
+            // Calculate volumes based on distance
+            const ballDistance = GAME.camera.position.distanceTo(GAME.ball.position);
+            const opponentDistance = GAME.camera.position.distanceTo(GAME.opponentPaddle.position);
+            
+            // Ball: slightly louder overall with minimum -12dB
+            const ballVolume = Math.max(-12, 0 - (ballDistance / 40) * 12);
+            
+            // Opponent: quieter with minimum -18dB
+            const opponentVolume = Math.max(-18, -6 - (opponentDistance / 40) * 12);
+            
+            if (GAME.ball.userData.volume) {
+                GAME.ball.userData.volume.volume.value = ballVolume;
+            }
+            if (GAME.opponentPaddle.userData.volume) {
+                GAME.opponentPaddle.userData.volume.volume.value = opponentVolume;
+            }
+        };
+        
+        // Start round
+        GAME.startRound = function() {
+            GAME.smashesLeft = 3;
+            document.getElementById('smashesLeft').textContent = '3';
+            GAME.roundStartTime = Date.now();
+            GAME.totalPausedTime = 0;
+            GAME.lastBallContact = Date.now();
+            GAME.ballInDetectionZone = false;
+            GAME.opponentMissDecided = false;
+            GAME.opponentWillMiss = false;
+            
+            // Choose random start position
+            const variation = GAME.ballStartVariations[Math.floor(Math.random() * GAME.ballStartVariations.length)];
+            
+            // Position ball
+            if (variation.side === 'player') {
+                GAME.ball.position.set(
+                    variation.offset.x,
+                    GAME.CAMERA_HEIGHT,
+                    GAME.playerPaddle.position.z + variation.offset.z
+                );
+                // Set velocity away from player
+                const angleRad = (variation.angle * Math.PI) / 180;
+                GAME.ballVelocity.set(
+                    Math.sin(angleRad) * GAME.ballCurrentSpeed,
+                    0,
+                    -Math.cos(angleRad) * GAME.ballCurrentSpeed
+                );
+            } else {
+                GAME.ball.position.set(
+                    variation.offset.x,
+                    GAME.CAMERA_HEIGHT,
+                    GAME.opponentPaddle.position.z + variation.offset.z
+                );
+                // Set velocity toward player
+                const angleRad = (variation.angle * Math.PI) / 180;
+                GAME.ballVelocity.set(
+                    Math.sin(angleRad) * GAME.ballCurrentSpeed,
+                    0,
+                    Math.cos(angleRad) * GAME.ballCurrentSpeed
+                );
+            }
+        };
+        
+        // Check for detection lines (conga/bongo system)
+        GAME.checkDetectionLines = function() {
+            if (!GAME.isAudioRunning || GAME.isPaused) return;
+            
+            const ballX = GAME.ball.position.x;
+            const ballZ = GAME.ball.position.z;
+            const playerX = GAME.playerPaddle.position.x;
+            const playerZ = GAME.playerPaddle.position.z;
+            
+            // Define detection zone based on paddle width
+            const leftEdge = playerX - GAME.PADDLE_WIDTH/2;
+            const rightEdge = playerX + GAME.PADDLE_WIDTH/2;
+            
+            // Check if ball is in front of player (Z position check)
+            const ballInFront = ballZ < playerZ;
+            
+            // Track if ball is between detection lines
+            const ballBetweenLines = ballX >= leftEdge && ballX <= rightEdge;
+            
+            // Initialize tracking variable if needed
+            if (GAME.ballInDetectionZone === undefined) {
+                GAME.ballInDetectionZone = false;
+                GAME.lastDetectionCross = 0;
+            }
+            
+            // Only process if ball is in front of player
+            if (ballInFront) {
+                // Check for zone entry (conga)
+                if (!GAME.ballInDetectionZone && ballBetweenLines) {
+                    GAME.ballInDetectionZone = true;
+                    
+                    // Determine which side the ball entered from
+                    if (Date.now() - GAME.lastDetectionCross > 100 && GAME.congaDrum) {  // Debounce
+                        const previousX = GAME.ball.position.x - GAME.ballVelocity.x;
+                        
+                        // Create temporary synths with panning for directional sound
+                        if (previousX < leftEdge) {
+                            // Entered from left
+                            const leftConga = new Tone.MembraneSynth({
+                                pitch: 2,
+                                volume: -8,
+                                envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.5 }
+                            }).connect(GAME.congaPannerLeft);
+                            leftConga.triggerAttackRelease('C2', '8n');
+                            // Clean up after sound plays
+                            setTimeout(() => leftConga.dispose(), 1000);
+                        } else if (previousX > rightEdge) {
+                            // Entered from right
+                            const rightConga = new Tone.MembraneSynth({
+                                pitch: 2,
+                                volume: -8,
+                                envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.5 }
+                            }).connect(GAME.congaPannerRight);
+                            rightConga.triggerAttackRelease('C2', '8n');
+                            // Clean up after sound plays
+                            setTimeout(() => rightConga.dispose(), 1000);
+                        }
+                        GAME.lastDetectionCross = Date.now();
+                    }
+                }
+                
+                // Check for zone exit (bongo)
+                if (GAME.ballInDetectionZone && !ballBetweenLines) {
+                    GAME.ballInDetectionZone = false;
+                    
+                    // Determine which side the ball exited from
+                    if (Date.now() - GAME.lastDetectionCross > 100 && GAME.bongoDrum) {  // Debounce
+                        if (ballX < leftEdge) {
+                            // Exited to left
+                            const leftBongo = new Tone.MembraneSynth({
+                                pitch: 6,
+                                volume: -8,
+                                envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.3 }
+                            }).connect(GAME.bongoPannerLeft);
+                            leftBongo.triggerAttackRelease('C3', '8n');
+                            // Clean up after sound plays
+                            setTimeout(() => leftBongo.dispose(), 1000);
+                        } else if (ballX > rightEdge) {
+                            // Exited to right
+                            const rightBongo = new Tone.MembraneSynth({
+                                pitch: 6,
+                                volume: -8,
+                                envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.3 }
+                            }).connect(GAME.bongoPannerRight);
+                            rightBongo.triggerAttackRelease('C3', '8n');
+                            // Clean up after sound plays
+                            setTimeout(() => rightBongo.dispose(), 1000);
+                        }
+                        GAME.lastDetectionCross = Date.now();
+                    }
+                }
+            } else {
+                // Ball is behind player - reset detection state
+                GAME.ballInDetectionZone = false;
+            }
+        };
+        
+        // Check collisions
+        GAME.checkCollisions = function() {
+            if (GAME.state !== 'playing' || GAME.isPaused || GAME.scoringInProgress) return;
+            
+            const ballPos = GAME.ball.position;
+            const playerPos = GAME.playerPaddle.position;
+            const opponentPos = GAME.opponentPaddle.position;
+            
+            // Initialize collision cooldown if needed
+            if (!GAME.lastPlayerCollision) GAME.lastPlayerCollision = 0;
+            if (!GAME.lastOpponentCollision) GAME.lastOpponentCollision = 0;
+            
+            // Collision cooldown period (prevents multiple hits)
+            const collisionCooldown = 200; // 200ms cooldown
+            
+            // Check wall collisions
+            if (Math.abs(ballPos.x) > GAME.ROOM_WIDTH/2 - GAME.BALL_RADIUS) {
+                GAME.ballVelocity.x *= -1;
+                ballPos.x = Math.sign(ballPos.x) * (GAME.ROOM_WIDTH/2 - GAME.BALL_RADIUS);
+                
+                // Play wall collision sound with spatial positioning
+                if (Date.now() - GAME.lastWallCollision > 100 && GAME.hiHat) {
+                    // Calculate pan based on ball's X position (where it hit the wall)
+                    const pan = ballPos.x / (GAME.ROOM_WIDTH/2); // -1 for left wall, +1 for right wall
+                    
+                    // Calculate distance-based volume
+                    const distance = Math.sqrt(
+                        Math.pow(ballPos.x - playerPos.x, 2) + 
+                        Math.pow(ballPos.z - playerPos.z, 2)
+                    );
+                    // Volume decreases with distance: -14dB at close range to -35dB at far range
+                    const distanceVolume = Math.max(-35, -14 - (distance * 0.67));
+                    
+                    // Create temporary spatial positioning
+                    const tempPanner = new Tone.Panner(pan).toDestination();
+                    const tempVolume = new Tone.Volume(distanceVolume).connect(tempPanner);
+                    
+                    // Temporarily reconnect hiHat through spatial chain
+                    GAME.hiHat.disconnect();
+                    GAME.hiHat.connect(tempVolume);
+                    
+                    // Play the sound
+                    GAME.hiHat.triggerAttackRelease('16n');
+                    
+                    // Clean up after sound plays (60ms should be enough for the short decay)
+                    setTimeout(() => {
+                        GAME.hiHat.disconnect();
+                        GAME.hiHat.toDestination();
+                        tempVolume.dispose();
+                        tempPanner.dispose();
+                    }, 100);
+                    
+                    GAME.lastWallCollision = Date.now();
+                }
+            }
+            
+            // Check player paddle collision
+            const playerCollision = 
+                Math.abs(ballPos.x - playerPos.x) < GAME.PADDLE_WIDTH/2 + GAME.BALL_RADIUS &&
+                Math.abs(ballPos.z - playerPos.z) < 0.5 + GAME.BALL_RADIUS &&
+                GAME.ballVelocity.z > 0 &&
+                ballPos.z > playerPos.z - 1 &&  // Ball must be in front of paddle
+                (Date.now() - GAME.lastPlayerCollision) > collisionCooldown;  // Cooldown check
+                
+            if (playerCollision) {
+                GAME.lastPlayerCollision = Date.now();  // Update collision time
+                // Schedule snare drum on nearest beat or half-beat
+                const timeSinceBarStart = (Date.now() % 1846);  // Time within current bar (1846ms per bar)
+                const beatLength = 461;  // Quarter note at 130 BPM
+                const halfBeatLength = 230.5;  // Eighth note at 130 BPM
+                
+                // Find nearest beat or half-beat
+                const timeToBeat = beatLength - (timeSinceBarStart % beatLength);
+                const timeToHalfBeat = halfBeatLength - (timeSinceBarStart % halfBeatLength);
+                const snareDelay = Math.min(timeToBeat, timeToHalfBeat);
+                
+                // Play musical note on nearest beat/half-beat
+                setTimeout(() => {
+                    if (GAME.playerPaddleSynth && GAME.isAudioRunning) {
+                        // Get a random note from current bar
+                        const barNotes = GAME.BAR_NOTES[GAME.currentBar];
+                        const note = barNotes[Math.floor(Math.random() * barNotes.length)];
+                        // Play in octave 2 (lowest octave)
+                        GAME.playerPaddleSynth.triggerAttackRelease(`${note}2`, '8n');
+                    }
+                }, snareDelay);
+                
+                // Determine special movement conditions
+                const isStationary = !GAME.playerMovingLeft && !GAME.playerMovingRight;
+                const isWalking = (GAME.playerMovingLeft || GAME.playerMovingRight) && !GAME.playerRunning;
+                const isRunning = (GAME.playerMovingLeft || GAME.playerMovingRight) && GAME.playerRunning;
+                const timeSinceSpace = Date.now() - GAME.lastSpacePress;
+                
+                // Smash timing based on difficulty
+                let smashWindow = 1000; // Easy: 1 second
+                if (GAME.mode === 'moderate') smashWindow = 700; // 0.7 seconds
+                if (GAME.mode === 'hard') smashWindow = 500; // 0.5 seconds
+                
+                const canSmash = isStationary && timeSinceSpace < smashWindow && GAME.smashesLeft > 0;
+                
+                // Calculate hit position for corner detection
+                const hitOffset = (ballPos.x - playerPos.x) / (GAME.PADDLE_WIDTH/2);
+                const isCornerHit = Math.abs(hitOffset) > 0.7; // Hit near edge of paddle
+                
+                let specialSpeed = null;
+                let speedMultiplier = 1.0;
+                let bellOctave = 6; // Highest octave for player
+                
+                // Priority order: Smashing > Slice-cornering > Cornering > Slicing
+                if (canSmash) {
+                    // Smashing - 140% speed
+                    specialSpeed = 'smash';
+                    speedMultiplier = 1.4;
+                    GAME.smashesLeft--;
+                    document.getElementById('smashesLeft').textContent = GAME.smashesLeft;
+                } else if (isRunning && isCornerHit) {
+                    // Slice-cornering - 150% speed
+                    specialSpeed = 'slice-corner';
+                    speedMultiplier = 1.5;
+                } else if ((isStationary || isWalking) && isCornerHit) {
+                    // Cornering - 130% speed
+                    specialSpeed = 'corner';
+                    speedMultiplier = 1.3;
+                } else if (isRunning) {
+                    // Slicing - 120% speed
+                    specialSpeed = 'slice';
+                    speedMultiplier = 1.2;
+                }
+                
+                // Apply speed change
+                if (specialSpeed) {
+                    GAME.ballCurrentSpeed = GAME.ballBaseSpeed * speedMultiplier;
+                    
+                    // Play bell sound on next beat for special speed
+                    const currentBarNotes = GAME.BAR_NOTES[GAME.currentBar];
+                    const bellNote = currentBarNotes[Math.floor(Math.random() * currentBarNotes.length)];
+                    setTimeout(() => {
+                        if (GAME.bellSynth) {
+                            GAME.bellSynth.triggerAttackRelease(`${bellNote}${bellOctave}`, '4n');
+                        }
+                    }, 461); // Play on the next beat (461ms at 130 BPM)
+                } else {
+                    // Normal hit
+                    GAME.ballCurrentSpeed = GAME.ballBaseSpeed;
+                }
+                
+                // Calculate bounce angle
+                let bounceAngle;
+                if (specialSpeed === 'slice' || specialSpeed === 'slice-corner') {
+                    // Angle based on paddle movement direction
+                    const moveDirection = GAME.playerMovingLeft ? -1 : (GAME.playerMovingRight ? 1 : 0);
+                    bounceAngle = moveDirection * 30 * (Math.PI / 180);
+                } else {
+                    // Angle based on hit position (normal or corner)
+                    const maxAngle = isCornerHit ? 60 : 45;
+                    bounceAngle = hitOffset * maxAngle * (Math.PI / 180);
+                }
+                
+                // Constrain angle to maximum 70 degrees to ensure forward progress
+                const MAX_BOUNCE_ANGLE = 70 * (Math.PI / 180); // 70 degrees in radians
+                bounceAngle = Math.max(-MAX_BOUNCE_ANGLE, Math.min(MAX_BOUNCE_ANGLE, bounceAngle));
+                
+                GAME.ballVelocity.x = Math.sin(bounceAngle) * GAME.ballCurrentSpeed;
+                GAME.ballVelocity.z = -Math.cos(bounceAngle) * GAME.ballCurrentSpeed;
+                
+                GAME.lastBallContact = Date.now();
+                // Ensure ball is clearly in front of paddle to prevent trapping
+                ballPos.z = playerPos.z - 1.0 - GAME.BALL_RADIUS;
+            }
+            
+            // Check opponent paddle collision
+            const opponentCollision = 
+                Math.abs(ballPos.x - opponentPos.x) < GAME.PADDLE_WIDTH/2 + GAME.BALL_RADIUS &&
+                Math.abs(ballPos.z - opponentPos.z) < 0.5 + GAME.BALL_RADIUS &&
+                GAME.ballVelocity.z < 0 &&
+                ballPos.z < opponentPos.z + 1 &&  // Ball must be in front of paddle
+                (Date.now() - GAME.lastOpponentCollision) > collisionCooldown;  // Cooldown check
+                
+            if (opponentCollision) {
+                GAME.lastOpponentCollision = Date.now();  // Update collision time
+                
+                // Play musical note for opponent paddle hit on nearest beat/half-beat
+                const timeSinceBarStart = (Date.now() % 1846);  // Time within current bar
+                const beatLength = 461;  // Quarter note at 130 BPM
+                const halfBeatLength = 230.5;  // Eighth note at 130 BPM
+                
+                // Find nearest beat or half-beat
+                const timeToBeat = beatLength - (timeSinceBarStart % beatLength);
+                const timeToHalfBeat = halfBeatLength - (timeSinceBarStart % halfBeatLength);
+                const soundDelay = Math.min(timeToBeat, timeToHalfBeat);
+                
+                setTimeout(() => {
+                    if (GAME.opponentPaddleSynth && GAME.isAudioRunning) {
+                        // Get a random note from current bar
+                        const barNotes = GAME.BAR_NOTES[GAME.currentBar];
+                        const note = barNotes[Math.floor(Math.random() * barNotes.length)];
+                        
+                        // Calculate distance-based volume (same as opponent melody)
+                        const opponentDistance = GAME.camera.position.distanceTo(GAME.opponentPaddle.position);
+                        const opponentVolume = Math.max(-18, -6 - (opponentDistance / 30) * 12);
+                        GAME.opponentPaddleSynth.volume.value = opponentVolume;
+                        
+                        // Calculate panning based on opponent paddle X position
+                        const opponentPan = GAME.opponentPaddle.position.x / (GAME.ROOM_WIDTH / 2);
+                        GAME.opponentPaddlePanner.pan.value = Math.max(-1, Math.min(1, opponentPan));
+                        
+                        // Play in octave 4 (middle octave)
+                        GAME.opponentPaddleSynth.triggerAttackRelease(`${note}4`, '8n');
+                    }
+                }, soundDelay);
+                
+                // Check if ball had special speed
+                const hadSpecialSpeed = GAME.ballCurrentSpeed > GAME.ballBaseSpeed;
+                
+                // AI can randomly renew or replace special speeds (simplified for AI)
+                let renewOrReplace = false;
+                if (hadSpecialSpeed) {
+                    // AI has chance to maintain special speed based on difficulty
+                    let maintainChance = 0.3; // Easy
+                    if (GAME.mode === 'moderate') maintainChance = 0.5;
+                    if (GAME.mode === 'hard') maintainChance = 0.7;
+                    renewOrReplace = Math.random() < maintainChance;
+                }
+                
+                if (renewOrReplace) {
+                    // AI renews/replaces special speed - keep current multiplier
+                    // Bell in second-highest octave for opponent
+                    const currentBarNotes = GAME.BAR_NOTES[GAME.currentBar];
+                    const bellNote = currentBarNotes[Math.floor(Math.random() * currentBarNotes.length)];
+                    setTimeout(() => {
+                        if (GAME.bellSynth) {
+                            GAME.bellSynth.triggerAttackRelease(`${bellNote}5`, '4n');
+                        }
+                    }, 461); // Play on next beat
+                } else {
+                    // Return to base speed
+                    GAME.ballCurrentSpeed = GAME.ballBaseSpeed;
+                    
+                    // If special speed expired, play bell for replacement
+                    if (hadSpecialSpeed && GAME.bellSynth) {
+                        const currentBarNotes = GAME.BAR_NOTES[GAME.currentBar];
+                        const bellNote = currentBarNotes[Math.floor(Math.random() * currentBarNotes.length)];
+                        setTimeout(() => {
+                            GAME.bellSynth.triggerAttackRelease(`${bellNote}5`, '4n');
+                        }, 461);
+                    }
+                }
+                
+                // Calculate return angle with some randomness
+                const hitOffset = (ballPos.x - opponentPos.x) / (GAME.PADDLE_WIDTH/2);
+                const randomFactor = (Math.random() - 0.5) * 0.3;
+                let bounceAngle = (hitOffset + randomFactor) * 30 * (Math.PI / 180);
+                
+                // Constrain angle to maximum 70 degrees to ensure forward progress
+                const MAX_BOUNCE_ANGLE = 70 * (Math.PI / 180); // 70 degrees in radians
+                bounceAngle = Math.max(-MAX_BOUNCE_ANGLE, Math.min(MAX_BOUNCE_ANGLE, bounceAngle));
+                
+                GAME.ballVelocity.x = Math.sin(bounceAngle) * GAME.ballCurrentSpeed;
+                GAME.ballVelocity.z = Math.cos(bounceAngle) * GAME.ballCurrentSpeed;
+                
+                GAME.lastBallContact = Date.now();
+                // Ensure ball is clearly in front of paddle to prevent trapping
+                ballPos.z = opponentPos.z + 1.0 + GAME.BALL_RADIUS;
+            }
+            
+            // Check for scoring
+            if (ballPos.z > GAME.ROOM_LENGTH/2 && !GAME.scoringInProgress) {
+                // Opponent scores - descending notes
+                GAME.scoringInProgress = true;
+                GAME.opponentScore++;
+                GAME.lastScorer = 'opponent';  // Track that opponent scored
+                document.getElementById('opponentScore').textContent = GAME.opponentScore;
+                GAME.roundNumber++;
+                document.getElementById('roundNumber').textContent = GAME.roundNumber;
+                
+                // Play descending notes for opponent score
+                if (GAME.bellSynth) {
+                    const descendingNotes = ['G4', 'E4', 'C4', 'G3'];
+                    descendingNotes.forEach((note, i) => {
+                        GAME.bellSynth.triggerAttackRelease(note, '8n', Tone.now() + i * 0.1);
+                    });
+                }
+                
+                if (GAME.opponentScore >= 11) {
+                    GAME.endMatch(false);
+                } else {
+                    setTimeout(() => {
+                        GAME.scoringInProgress = false;
+                        GAME.startRound();
+                    }, 1500);
+                }
+            }
+            
+            if (ballPos.z < -GAME.ROOM_LENGTH/2 && !GAME.scoringInProgress) {
+                // Player scores - ascending notes
+                GAME.scoringInProgress = true;
+                GAME.playerScore++;
+                GAME.lastScorer = 'player';  // Track that player scored
+                document.getElementById('playerScore').textContent = GAME.playerScore;
+                GAME.roundNumber++;
+                document.getElementById('roundNumber').textContent = GAME.roundNumber;
+                
+                // Play ascending notes for player score
+                if (GAME.bellSynth) {
+                    const ascendingNotes = ['C4', 'E4', 'G4', 'C5'];
+                    ascendingNotes.forEach((note, i) => {
+                        GAME.bellSynth.triggerAttackRelease(note, '8n', Tone.now() + i * 0.1);
+                    });
+                }
+                
+                if (GAME.playerScore >= 11) {
+                    GAME.endMatch(true);
+                } else {
+                    setTimeout(() => {
+                        GAME.scoringInProgress = false;
+                        GAME.startRound();
+                    }, 1500);
+                }
+            }
+            
+            // Round reset if no contact for 10 seconds (excluding paused time)
+            const timeSinceContact = Date.now() - GAME.lastBallContact - GAME.totalPausedTime;
+            if (timeSinceContact > 10000) {
+                GAME.startRound();
+            }
+        };
+        
+        // Update AI opponent
+        GAME.updateOpponent = function() {
+            if (GAME.state !== 'playing' || GAME.isPaused) return;
+            
+            // Track ball position
+            const targetX = GAME.ball.position.x;
+            const currentX = GAME.opponentPaddle.position.x;
+            
+            // Difficulty-based accuracy and miss chance
+            let errorMargin = 0;
+            let reactionSpeed = 0.05;
+            let missChance = 0;
+            
+            switch(GAME.mode) {
+                case 'easy':
+                    errorMargin = 0.5;
+                    reactionSpeed = 0.04;
+                    missChance = 0.15; // 15% chance to miss
+                    break;
+                case 'moderate':
+                    errorMargin = 0.25;
+                    reactionSpeed = 0.06;
+                    missChance = 0.08; // 8% chance to miss
+                    break;
+                case 'hard':
+                    errorMargin = 0.1;
+                    reactionSpeed = 0.10;
+                    missChance = 0.03; // 3% chance to miss
+                    break;
+            }
+            
+            // Only check for miss when ball is approaching opponent's side
+            if (!GAME.opponentMissDecided && GAME.ballVelocity.z < 0 && GAME.ball.position.z < 0) {
+                // Decide once per approach whether to miss
+                GAME.opponentMissDecided = true;
+                GAME.opponentWillMiss = Math.random() < missChance;
+                if (GAME.opponentWillMiss) {
+                    // Set a wrong target position
+                    GAME.opponentMissTarget = targetX + (Math.random() - 0.5) * 4;
+                }
+            } else if (GAME.ballVelocity.z > 0) {
+                // Reset miss decision when ball is going away
+                GAME.opponentMissDecided = false;
+                GAME.opponentWillMiss = false;
+            }
+            
+            // Determine target position
+            let finalTarget;
+            if (GAME.opponentWillMiss) {
+                finalTarget = GAME.opponentMissTarget;
+            } else {
+                // Add some error for difficulty
+                finalTarget = targetX + (Math.random() - 0.5) * errorMargin;
+            }
+            
+            // Move toward target
+            const diff = finalTarget - currentX;
+            if (Math.abs(diff) > 0.05) {
+                const moveAmount = Math.sign(diff) * Math.min(reactionSpeed, Math.abs(diff));
+                GAME.opponentPaddle.position.x += moveAmount;
+                
+                // Constrain to room bounds
+                const maxX = GAME.ROOM_WIDTH/2 - GAME.PADDLE_WIDTH/2;
+                GAME.opponentPaddle.position.x = Math.max(-maxX, Math.min(maxX, GAME.opponentPaddle.position.x));
+            }
+        };
+        
+        // Select game mode
+        GAME.selectMode = function(mode) {
+            GAME.mode = mode;
+            document.getElementById('gameMode').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+            
+            // Set base speed based on mode
+            switch(mode) {
+                case 'easy':
+                    GAME.ballBaseSpeed = 0.045;  // Reduced by 25% from 0.06
+                    break;
+                case 'moderate':
+                    GAME.ballBaseSpeed = 0.056;  // Reduced by 25% from 0.075
+                    break;
+                case 'hard':
+                    GAME.ballBaseSpeed = 0.068;  // Reduced by 25% from 0.09
+                    break;
+            }
+            
+            GAME.ballCurrentSpeed = GAME.ballBaseSpeed;
+            
+            // Hide mode select, show game UI
+            document.getElementById('modeSelect').classList.add('hidden');
+            document.getElementById('gameUI').classList.remove('hidden');
+            document.getElementById('smashCounter').style.display = 'block';
+            
+            // Initialize audio BEFORE starting the match
+            if (!GAME.isAudioRunning) {
+                GAME.initAudio().then(() => {
+                    GAME.isAudioRunning = true;
+                    GAME.windSynth.start();
+                    Tone.Transport.start();
+                    GAME.playBar();
+                    GAME.playMovementDrum();
+                    GAME.playSurfacePercussion();
+                    
+                    // Now start the match with audio ready
+                    GAME.startMatch();
+                });
+            } else {
+                // Audio already running, start immediately
+                GAME.startMatch();
+            }
+        };
+        
+        // Pause game
+        GAME.pauseGame = function() {
+            if (GAME.state !== 'playing' || GAME.isPaused) return;
+            
+            GAME.isPaused = true;
+            GAME.pauseTime = Date.now();
+            
+            // Play pause sound
+            if (GAME.isAudioRunning && GAME.bellSynth) {
+                GAME.bellSynth.triggerAttackRelease('G3', '16n');
+            }
+            
+            // Show pause overlay and indicator
+            document.getElementById('pauseOverlay').classList.remove('hidden');
+            document.getElementById('pauseIndicator').style.display = 'block';
+            
+            // Pause audio
+            if (GAME.isAudioRunning) {
+                Tone.Transport.pause();
+                if (GAME.windSynth && GAME.windSynth.state === 'started') {
+                    GAME.windSynth.stop();
+                }
+                // Clear melody, drum, and surface percussion timeouts to prevent overlap
+                if (GAME.melodyTimeout) {
+                    clearTimeout(GAME.melodyTimeout);
+                }
+                if (GAME.drumTimeout) {
+                    clearTimeout(GAME.drumTimeout);
+                }
+                if (GAME.surfacePercussionTimeout) {
+                    clearTimeout(GAME.surfacePercussionTimeout);
+                }
+                // Clear ball note timeouts
+                if (GAME.ballNoteTimeouts) {
+                    GAME.ballNoteTimeouts.forEach(timeout => clearTimeout(timeout));
+                    GAME.ballNoteTimeouts = [];
+                }
+            }
+        };
+        
+        // Resume game
+        GAME.resumeGame = function() {
+            if (GAME.state !== 'playing' || !GAME.isPaused) return;
+            
+            // Calculate paused duration and add to total
+            const pausedDuration = Date.now() - GAME.pauseTime;
+            GAME.totalPausedTime += pausedDuration;
+            
+            GAME.isPaused = false;
+            
+            // Play resume sound
+            if (GAME.isAudioRunning && GAME.bellSynth) {
+                GAME.bellSynth.triggerAttackRelease('C4', '16n');
+            }
+            
+            // Hide pause overlay and indicator
+            document.getElementById('pauseOverlay').classList.add('hidden');
+            document.getElementById('pauseIndicator').style.display = 'none';
+            
+            // Resume audio
+            if (GAME.isAudioRunning) {
+                Tone.Transport.start();
+                if (GAME.windSynth) {
+                    GAME.windSynth.start();
+                }
+                // Restart melody, drum, and surface percussion playback after resuming
+                setTimeout(() => {
+                    GAME.playBar();
+                    GAME.playMovementDrum();
+                    GAME.playSurfacePercussion();
+                }, 100);
+            }
+        };
+        
+        // Start match
+        GAME.startMatch = function() {
+            GAME.state = 'playing';
+            GAME.isPaused = false;
+            GAME.playerScore = 0;
+            GAME.opponentScore = 0;
+            GAME.roundNumber = 1;
+            GAME.lastScorer = null;  // Reset who scored last
+            
+            document.getElementById('playerScore').textContent = '0';
+            document.getElementById('opponentScore').textContent = '0';
+            document.getElementById('roundNumber').textContent = '1';
+            document.getElementById('pauseOverlay').classList.add('hidden');
+            document.getElementById('pauseIndicator').style.display = 'none';
+            document.getElementById('smashCounter').style.display = 'block';
+            
+            // Initialize ball note for first bar
+            if (GAME.ball && GAME.ball.userData) {
+                const firstBarNotes = GAME.BAR_NOTES[1];
+                GAME.ball.userData.currentNote = firstBarNotes[Math.floor(Math.random() * firstBarNotes.length)];
+            }
+            
+            // Audio is now initialized in selectMode, so we can start immediately
+            GAME.startRound();
+        };
+        
+        // End match
+        GAME.endMatch = function(playerWon) {
+            GAME.state = 'gameover';
+            
+            // Play victory/defeat sound
+            if (GAME.bellSynth) {
+                const notes = playerWon ? ['C4', 'E4', 'G4', 'C5'] : ['C4', 'G3', 'E3', 'C3'];
+                notes.forEach((note, i) => {
+                    GAME.bellSynth.triggerAttackRelease(note, '4n', Tone.now() + i * 0.2);
+                });
+            }
+            
+            // Show result
+            setTimeout(() => {
+                alert(playerWon ? 'You Win!' : 'You Lose!');
+                location.reload(); // Simple restart for now
+            }, 2000);
+        };
+        
+        // Input handling
+        document.addEventListener('keydown', (e) => {
+            // Handle pause
+            if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
+                if (GAME.state === 'playing') {
+                    if (GAME.isPaused) {
+                        GAME.resumeGame();
+                    } else {
+                        GAME.pauseGame();
+                    }
+                }
+                e.preventDefault();
+                return;
+            }
+            
+            // Don't process other inputs while paused
+            if (GAME.isPaused) return;
+            
+            GAME.keys[e.key.toLowerCase()] = true;
+            
+            if (e.key === ' ') {
+                GAME.lastSpacePress = Date.now();
+                e.preventDefault();
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            // Don't process key releases while paused (except pause keys)
+            if (GAME.isPaused && e.key !== 'p' && e.key !== 'P' && e.key !== 'Escape') return;
+            
+            GAME.keys[e.key.toLowerCase()] = false;
+        });
+        
+        // Update player movement
+        GAME.updatePlayer = function() {
+            if (GAME.state !== 'playing' || GAME.isPaused) return;
+            
+            const walkSpeed = 0.06 * 1.2; // 120% increase
+            const runSpeed = 0.12 * 1.2; // 120% increase
+            
+            GAME.playerMovingLeft = GAME.keys['a'];
+            GAME.playerMovingRight = GAME.keys['d'];
+            GAME.playerRunning = GAME.keys['shift'];
+            
+            const speed = GAME.playerRunning ? runSpeed : walkSpeed;
+            
+            if (GAME.playerMovingLeft) {
+                GAME.playerPaddle.position.x -= speed;
+                GAME.camera.position.x -= speed;
+            }
+            if (GAME.playerMovingRight) {
+                GAME.playerPaddle.position.x += speed;
+                GAME.camera.position.x += speed;
+            }
+            
+            // Constrain to room bounds
+            const maxX = GAME.ROOM_WIDTH/2 - GAME.PADDLE_WIDTH/2;
+            GAME.playerPaddle.position.x = Math.max(-maxX, Math.min(maxX, GAME.playerPaddle.position.x));
+            GAME.camera.position.x = GAME.playerPaddle.position.x;
+        };
+        
+        // Update ball
+        GAME.updateBall = function() {
+            if (GAME.state !== 'playing' || GAME.isPaused) return;
+            
+            // Update position
+            GAME.ball.position.add(GAME.ballVelocity);
+            
+            // Update base speed based on game mode
+            const actualRoundTime = Date.now() - GAME.roundStartTime - GAME.totalPausedTime;
+            const roundDuration = actualRoundTime / 1000;
+            
+            if (GAME.mode === 'easy') {
+                // EASY MODE: No speed increases at all
+                GAME.ballBaseSpeed = 0.045;
+                
+            } else if (GAME.mode === 'moderate') {
+                // MODERATE MODE: Speed only increases when player scores
+                let baseSpeed = 0.056;
+                
+                // Only add speed bonus if player scored
+                if (GAME.lastScorer === 'player') {
+                    const playerScoreBonus = GAME.playerScore * 0.003;
+                    baseSpeed += playerScoreBonus;
+                }
+                
+                // Still add time bonus for challenge
+                let timeSpeedBonus = 0;
+                if (roundDuration > 40) {
+                    const intervals = Math.floor((roundDuration - 40) / 20);
+                    timeSpeedBonus = intervals * 0.01;
+                }
+                
+                GAME.ballBaseSpeed = baseSpeed + timeSpeedBonus;
+                
+            } else if (GAME.mode === 'hard') {
+                // HARD MODE: All speed increases apply
+                let baseSpeed = 0.068;
+                
+                // Add speed for round progression
+                const roundSpeedBonus = (GAME.roundNumber - 1) * 0.003;
+                
+                // Add speed for time within round
+                let timeSpeedBonus = 0;
+                if (roundDuration > 40) {
+                    const intervals = Math.floor((roundDuration - 40) / 20);
+                    timeSpeedBonus = intervals * 0.01;
+                }
+                
+                GAME.ballBaseSpeed = baseSpeed + roundSpeedBonus + timeSpeedBonus;
+            }
+        };
+        
+        // Main game loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Skip all updates if paused
+            if (!GAME.isPaused) {
+                GAME.updatePlayer();
+                GAME.updateBall();
+                GAME.updateOpponent();
+                GAME.checkCollisions();
+                GAME.checkDetectionLines();
+                GAME.updateWind();
+                GAME.updateAudioPositions();
+            }
+            
+            GAME.renderer.render(GAME.scene, GAME.camera);
+        }
+        
+        // Window resize
+        window.addEventListener('resize', () => {
+            GAME.camera.aspect = window.innerWidth / window.innerHeight;
+            GAME.camera.updateProjectionMatrix();
+            GAME.renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Initialize game
+        createRoom();
+        createGameObjects();
+        animate();
+    </script>
+</body>
+</html>
