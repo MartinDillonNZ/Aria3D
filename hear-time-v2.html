@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hear Time</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            overflow: hidden;
+        }
+
+        #canvas {
+            display: block;
+        }
+
+        .audio-panel {
+            position: absolute;
+            top: 178px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 2px solid #4c6ef5;
+            width: 200px;
+        }
+
+        .audio-panel .slider-group {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #4c6ef5;
+        }
+
+        .audio-panel .slider-group label {
+            display: block;
+            font-size: 0.78em;
+            color: #aaa;
+            margin-bottom: 3px;
+        }
+
+        .audio-panel .slider-group label span {
+            color: #ffc107;
+            font-weight: bold;
+        }
+
+        .audio-panel input[type="range"] {
+            width: 100%;
+            accent-color: #4c6ef5;
+        }
+
+        .audio-panel button {
+            display: block;
+            width: 100%;
+            background: #4c6ef5;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 3px 0;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .audio-panel button:hover {
+            background: #364fc7;
+        }
+
+        .audio-panel button.active {
+            background: #28a745;
+        }
+
+        .body-row .body-dur {
+            color: #888;
+            font-size: 0.85em;
+            min-width: 58px;
+            text-align: right;
+        }
+
+        .title-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 12px 18px;
+            border-radius: 10px;
+            border: 2px solid #4c6ef5;
+        }
+
+        .title-panel h1 {
+            font-size: 1.3em;
+            color: #4c6ef5;
+            letter-spacing: 3px;
+            margin-bottom: 2px;
+        }
+
+        .title-panel .subtitle {
+            font-size: 0.8em;
+            color: #aaa;
+            letter-spacing: 1px;
+        }
+
+        .observer-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 2px solid #4c6ef5;
+            text-align: center;
+            width: 200px;
+        }
+
+        .observer-panel .observer-label {
+            font-size: 0.75em;
+            color: #aaa;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .observer-panel .observer-state {
+            font-size: 2.2em;
+            font-weight: bold;
+            color: #ffc107;
+            line-height: 1.1;
+            transition: color 0.3s;
+        }
+
+        .observer-panel .observer-region {
+            font-size: 0.95em;
+            color: #ddd;
+        }
+
+        .observer-panel .observer-level {
+            font-size: 0.8em;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        .observer-panel .observer-hint {
+            margin-top: 6px;
+            font-size: 0.75em;
+            color: #4c6ef5;
+            font-weight: bold;
+        }
+
+        .body-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 2px solid #4c6ef5;
+            font-size: 0.8em;
+            width: 200px;
+        }
+
+        .body-panel h3 {
+            color: #4c6ef5;
+            font-size: 1em;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .body-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 3px 0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border-left: 3px solid transparent;
+        }
+
+        .body-row .body-dot {
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            margin-right: 7px;
+        }
+
+        .body-row .body-name {
+            flex: 1;
+            color: #ccc;
+        }
+
+        .body-row .body-state {
+            color: #ffc107;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .controls-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 2px solid #4c6ef5;
+            font-size: 0.85em;
+            line-height: 1.7;
+            width: 200px;
+        }
+
+        .key {
+            display: inline-block;
+            padding: 2px 7px;
+            background: #4c6ef5;
+            border-radius: 3px;
+            margin: 0 2px;
+            font-weight: bold;
+            font-size: 0.85em;
+        }
+
+        .status-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 2px solid #4c6ef5;
+            font-size: 0.85em;
+            width: 200px;
+        }
+
+        .status-item {
+            margin: 4px 0;
+        }
+
+        .status-item span {
+            color: #4c6ef5;
+            font-weight: bold;
+        }
+
+        .speed-control {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #4c6ef5;
+        }
+
+        .speed-control label {
+            display: block;
+            font-size: 0.85em;
+            color: #aaa;
+            margin-bottom: 4px;
+        }
+
+        .speed-control input[type="range"] {
+            width: 100%;
+            accent-color: #4c6ef5;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="audio-panel">
+        <button id="startBtn" onclick="startAudio()">▶ Start Audio</button>
+        <button onclick="stopAudio()">⏹ Stop Audio</button>
+    </div>
+
+    <div class="observer-panel">
+        <div class="observer-label">Observer Time-Dilation State</div>
+        <div class="observer-state" id="observerState">1.0</div>
+        <div class="observer-region" id="observerRegion">Open Space</div>
+        <div class="observer-level" id="observerLevel">Level 0</div>
+        <div class="observer-hint" id="orbitHint" style="display:none"></div>
+    </div>
+
+    <div class="body-panel">
+        <div id="bodyList"></div>
+    </div>
+
+    <div class="controls-info">
+        <div><span class="key">W</span>/<span class="key">S</span> Forward / Back</div>
+        <div><span class="key">A</span>/<span class="key">D</span> Strafe Left / Right</div>
+        <div><span class="key">←</span>/<span class="key">→</span> Turn Left / Right</div>
+        <div><span class="key">Shift</span> Fast Travel</div>
+        <div><span class="key">Space</span> Orbit / Detach</div>
+    </div>
+
+    <div class="status-panel">
+        <div class="status-item">Position: <span id="position">X:0 Z:0</span></div>
+        <div class="speed-control">
+            <label>Master Volume: <span id="masterVolLabel">0</span> dB</label>
+            <input type="range" id="masterVolSlider" min="-12" max="9" step="1" value="0">
+        </div>
+        <div class="speed-control">
+            <label>Movement Speed: <span id="speedLabel">25</span> units/s</label>
+            <input type="range" id="speedSlider" min="5" max="80" value="25">
+        </div>
+        <div class="speed-control">
+            <label>Orbit Speed: <span id="orbitSpeedLabel">100</span>%</label>
+            <input type="range" id="orbitSpeedSlider" min="0" max="300" step="5" value="100">
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
+    <script>
+// ============================================================
+// CHRONOSPHERE — Stages 1–3
+// Stage 1: Solar system, orbits, starfield
+// Stage 2: First-person planar navigation
+// Stage 3: Gravity wells + observer state detection
+// ============================================================
+
+// ---------------- CONFIG (all values adjustable) ----------------
+const CONFIG = {
+    // Camera
+    CAMERA_HEIGHT: 12,             // y elevation above orbital plane
+    CAMERA_PITCH_DEG: -9,          // fixed gentle downward tilt
+    CAMERA_START_Z: 110,           // start position outside Sun's 0.4 well
+
+    // Movement
+    BASE_MOVE_SPEED: 25,           // units per second (UI adjustable)
+    FAST_MULTIPLIER: 4,            // Shift multiplier
+    TURN_SPEED: 1.5,               // radians per second
+
+    // World
+    BOUNDARY_RADIUS: 320,          // just beyond Neptune's orbit (280)
+    STAR_COUNT: 1600,
+    STAR_SHELL_RADIUS: 900,
+
+    // Orbit mode (SPACE near a body): slow automatic circling while
+    // auto-facing the body. The body keeps its own orbit; you ride along.
+    ORBIT_VIEW_SPEED: 0.12,     // radians/second around the body
+    ORBIT_MIN_CLEARANCE: 4,     // minimum clearance beyond the body's radius
+
+    // Well ring visuals
+    WELL_OPACITY: 0.18,
+    WELL_SEGMENTS: 96,
+
+    // Vicinity labelling for bodies with no gravity well (Mercury, Mars).
+    // Inside this radius the region label shows the body's name, but the
+    // observer state remains 1.0 — no time dilation occurs.
+    VICINITY_RADIUS: 12,
+
+    // State machinery
+    STATE_LEVELS: { '1.0': 0, '0.8': 1, '0.4': 2, '0.2': 3 },
+
+    // Well tier colors (visual verification of boundaries)
+    WELL_COLORS: { 0.8: 0x4c6ef5, 0.4: 0xffc107, 0.2: 0xff6b6b },
+
+    // State display colors for observer panel
+    STATE_DISPLAY_COLORS: { 1.0: '#ffc107', 0.8: '#4c6ef5', 0.4: '#ff9800', 0.2: '#ff6b6b' }
+};
+
+// ---------------- CELESTIAL BODY DEFINITIONS ----------------
+// orbitSpeed in radians/second — exaggerated, Mercury fastest.
+// wells: ordered outer→inner, each { state, radius }
+const BODIES = [
+    { name: 'Sun',     radius: 12,  orbitRadius: 0,   orbitSpeed: 0,      color: 0xffb000, state: 0.2,
+      wells: [ { state: 0.8, radius: 32 }, { state: 0.4, radius: 24 }, { state: 0.2, radius: 16 } ] },
+    { name: 'Mercury', radius: 1.3, orbitRadius: 36,  orbitSpeed: 0.150,  color: 0x9e9e9e, state: 1.0, wells: [] },
+    { name: 'Venus',   radius: 2.3, orbitRadius: 44,  orbitSpeed: 0.110,  color: 0xe8c878, state: 0.8,
+      wells: [ { state: 0.8, radius: 10 } ] },
+    { name: 'Earth',   radius: 2.5, orbitRadius: 66,  orbitSpeed: 0.090,  color: 0x4488ff, state: 0.8,
+      wells: [ { state: 0.8, radius: 10 } ] },
+    { name: 'Mars',    radius: 1.5, orbitRadius: 80,  orbitSpeed: 0.070,  color: 0xd9543e, state: 1.0, wells: [] },
+    { name: 'Jupiter', radius: 5,   orbitRadius: 120, orbitSpeed: 0.045,  color: 0xd2a06c, state: 0.4,
+      wells: [ { state: 0.8, radius: 24 }, { state: 0.4, radius: 13 } ] },
+    { name: 'Saturn',  radius: 4.5, orbitRadius: 170, orbitSpeed: 0.035,  color: 0xe6d3a3, state: 0.4,
+      wells: [ { state: 0.8, radius: 20 }, { state: 0.4, radius: 11 } ] },
+    { name: 'Uranus',  radius: 3,   orbitRadius: 220, orbitSpeed: 0.025,  color: 0x7fdbdb, state: 0.8,
+      wells: [ { state: 0.8, radius: 12 } ] },
+    { name: 'Neptune', radius: 3,   orbitRadius: 280, orbitSpeed: 0.018,  color: 0x4666e0, state: 0.4,
+      wells: [ { state: 0.8, radius: 17 }, { state: 0.4, radius: 9 } ] }
+];
+
+// ---------------- AUDIO CONFIGURATION (Stage 4) ----------------
+const AUDIO = {
+    BPM: 140,
+    // Bin → note duration. Notes-per-bar for durations within a bar;
+    // bars-per-note for durations beyond a bar.
+    DURATIONS: {
+        '-3': { notation: '16n', notesPerBar: 16, bars: 0, label: '16th' },
+        '-2': { notation: '8n',  notesPerBar: 8,  bars: 0, label: '8th' },
+        '-1': { notation: '4n',  notesPerBar: 4,  bars: 0, label: '1/4' },
+        '0':  { notation: '2n',  notesPerBar: 2,  bars: 0, label: '1/2' },
+        '1':  { notation: '1m',  notesPerBar: 1,  bars: 1, label: 'whole' },
+        '2':  { notation: '2m',  notesPerBar: 0,  bars: 2, label: '2×whole' },
+        '3':  { notation: '4m',  notesPerBar: 0,  bars: 4, label: '4×whole' }
+    },
+    // Voice-density global reduction (the aria3D v8 technique): the
+    // total note density per bar varies ~8x between open space (~9
+    // events) and the Sun's core (~70). Each bar, the master feed is
+    // trimmed by COEFF*log2(density/BASELINE) dB, capped at MAX_DB —
+    // a fader ride that keeps total energy roughly constant.
+    DENSITY: { BASELINE: 12, COEFF: 4, MAX_DB: 10 },
+
+    MASTER_VOLUME: -7,   // headroom into the dynamics chain
+    MAKEUP_DB: 4,        // restored after compression, before the limiter
+    LIMITER_DB: -3,      // overshoot margin: stacked pluck transients can
+                         // beat a lookahead-less limiter to the ceiling
+    COMPRESSOR: { threshold: -14, ratio: 4, knee: 12, attack: 0.003, release: 0.25 },
+
+    // Scheduling resilience: deep lookahead + frequent clock updates
+    // ride out main-thread jank (rendering + 70-note bursts near Sun)
+    LOOKAHEAD: 0.5,
+    UPDATE_INTERVAL: 0.1,
+
+    // Per-body onset stagger (ms per body index). Eliminates the
+    // nine-voice simultaneous attack spike at bar lines. Imperceptible
+    // as timing (max ~32ms), reads as natural ensemble humanisation.
+    STAGGER_MS: 4,
+
+    // Spatial audio (Stage 5)
+    SPATIAL: {
+        NEAR_DIST: 10,           // inside this: no distance attenuation
+        FLOOR_FRACTION: 0.6,     // floor reached at 60% of boundary radius
+        MAX_ATTEN_DB: -36,       // attenuation at the floor; never silent
+        CURVE: 0.6,              // <1 = faster rolloff near-field, dramatic proximity
+        UPDATE_MS: 60,           // throttle: spatial updates ~16×/sec
+        RAMP_SEC: 0.12,          // ramped automation — no zipper noise
+        PAN_SLEW: 0.15,          // max pan movement per update: the stereo
+                                 // image glides, never leaps, however fast
+                                 // the view turns
+        CROWD_RADIUS: 25,        // proximity-crowd influence radius
+        CROWD_DB_PER_EXTRA: 3,   // trim per additional near-field body
+        CROWD_MAX_DB: 6          // crowd trim ceiling
+    }
+};
+
+// Near-field trim: extra reduction that fades in only at close range
+// (full at point-blank, zero beyond NEAR_TRIM_RADIUS). For bodies
+// whose distance balance is right but whose close-up presence is too
+// hot — orbit-range listening.
+const NEAR_TRIM = { Earth: -9, Uranus: -9, Mercury: -5 };
+const NEAR_TRIM_RADIUS = 20;
+
+// Per-body attenuation depth scaling: bigger bodies carry further.
+// Effective floor attenuation = MAX_ATTEN_DB * scale. The Sun only
+// sinks to ~-20dB at the floor (audible from anywhere, as the
+// system's anchor should be); small rocky bodies recede deeper.
+const ATTEN_SCALE = {
+    Sun: 0.55,
+    Jupiter: 0.6, Saturn: 0.6, Neptune: 0.6,
+    Venus: 0.7, Uranus: 0.7,
+    Earth: 1.0,
+    Mercury: 1.15, Mars: 1.15
+};
+
+// Pluck decay caps: for sustain-0 voices (Mercury, Mars) the decay
+// IS the note body. At 16th-note speed the default decay outlasts the
+// note interval, so adjacent notes bleed and beat against each other —
+// heard as uneven durations. Decay scales with note rate, like release.
+const PLUCK_DECAYS = { Mercury: 0.15, Mars: 0.12 };
+
+// Default release tails per body (the lush values from the timbre map).
+// At fast note rates these are dynamically shortened each bar so tails
+// never stack past the polyphony ceiling — the dropout fix.
+const RELEASES = {
+    Sun: 2.5, Jupiter: 1.6, Saturn: 1.8, Earth: 1.0, Venus: 1.2,
+    Uranus: 1.5, Neptune: 1.8, Mercury: 0.2, Mars: 0.15
+};
+
+// Which voices carry a modulation envelope (FM/AM synths)
+const HAS_MOD_ENV = {
+    Sun: true, Jupiter: true, Saturn: true, Venus: true, Neptune: true,
+    Mars: true, Earth: false, Uranus: false, Mercury: false
+};
+
+// THE one true bar length, computed from first principles — never
+// from Tone.Time() notation conversion. After the audio-context swap,
+// Tone's global time helper answered at the default 120 BPM while the
+// active Transport ran at 140: two disagreeing clocks, producing
+// 250ms note spacing inside 1714ms bars (the bar-joint collision bug).
+// Pure arithmetic cannot disagree with itself.
+AUDIO.BAR_SECONDS = 240 / AUDIO.BPM;  // 4 beats x 60/BPM = 1.7142857s
+
+// Fixed 16-note sequences — each body's permanent musical identity.
+// Notes drawn exclusively from CMaj7: C, E, G, B. Never changes.
+const SEQUENCES = {
+    Sun:     ['C','E','G','B','G','E','C','G','E','G','B','G','E','C','E','G'], // slow monumental arch
+    Mercury: ['C','G','E','B','C','B','E','G','B','E','G','C','E','C','B','G'], // darting zigzag
+    Venus:   ['E','G','E','C','E','G','B','G','E','C','E','G','E','B','G','E'], // gentle circling steps
+    Earth:   ['C','E','G','C','G','E','C','G','B','G','E','G','C','E','G','E'], // steady, anthemic
+    Mars:    ['C','C','G','C','E','E','C','G','C','C','B','C','G','G','E','C'], // terse, drumming repeats
+    Jupiter: ['C','E','G','E','G','B','G','E','C','E','G','E','B','G','E','C'], // broad rolling rises
+    Saturn:  ['B','G','B','E','B','G','B','C','B','G','B','E','G','B','C','B'], // chiming alternation
+    Uranus:  ['E','B','E','G','E','B','E','C','E','B','G','E','B','E','C','E'], // crystalline returns
+    Neptune: ['B','G','E','C','B','G','E','C','G','E','C','E','B','G','E','C']  // deep slow descents
+};
+
+// Octave per body — encodes size (large = low).
+// Whole system transposed +1 octave: keeps the Sun's fundamentals
+// in speaker-audible range and reduces sub-bass amplitude demand
+// (less compressor/limiter strain). Size ordering preserved.
+const OCTAVES = {
+    Sun: 2, Jupiter: 3, Saturn: 3,
+    Earth: 4, Venus: 4, Uranus: 4, Neptune: 4,
+    Mercury: 5, Mars: 5
+};
+
+// Per-body volume trim (dB) — perceptually compensated, not equal.
+// Square waves (Mercury) read far louder per dB than pure sines
+// (Uranus) or dark AM voices (Neptune); octave matters too.
+const BODY_TRIM = {
+    Sun: -10,      // sub-heavy: harmonics carry it, fundamental trimmed
+    Jupiter: -2,
+    Saturn: 0,     // brief bell strikes need presence to carry
+    Earth: -8,
+    Venus: -2,
+    Uranus: 0,     // pure sine: perceptually quiet, boosted
+    Neptune: 0,    // dark slow AM: perceptually quiet, boosted
+    Mercury: -25,  // harmonic-rich square: perceptually loud, cut hard
+    Mars: -6       // woody FM pluck: perceptually quiet, boosted
+};
+
+// Timbre builders — the approved timbre map.
+// Each returns a PolySynth-wrapped voice for clean note overlap.
+function buildVoice(name) {
+    switch (name) {
+        case 'Sun': // massive warm FM drone — never plays shorter than 1/2 note
+            return new Tone.PolySynth(Tone.FMSynth, {
+                maxPolyphony: 5,
+                harmonicity: 2,
+                modulationIndex: 9,
+                oscillator: { type: 'sine' },
+                modulation: { type: 'sine' },
+                envelope: { attack: 0.4, decay: 0.3, sustain: 0.85, release: 2.5 },
+                modulationEnvelope: { attack: 0.6, decay: 0.4, sustain: 0.6, release: 2 }
+            });
+        case 'Jupiter': // huge, round, breathy
+            return new Tone.PolySynth(Tone.FMSynth, {
+                maxPolyphony: 5,
+                harmonicity: 1,
+                modulationIndex: 3,
+                oscillator: { type: 'sine' },
+                modulation: { type: 'sine' },
+                envelope: { attack: 0.2, decay: 0.3, sustain: 0.7, release: 1.6 },
+                modulationEnvelope: { attack: 0.3, decay: 0.3, sustain: 0.5, release: 1.2 }
+            });
+        case 'Saturn': // ringing bell shimmer — the rings, audible
+            return new Tone.PolySynth(Tone.FMSynth, {
+                maxPolyphony: 5,
+                harmonicity: 3.5,
+                modulationIndex: 8,
+                oscillator: { type: 'sine' },
+                modulation: { type: 'sine' },
+                envelope: { attack: 0.01, decay: 1.4, sustain: 0.25, release: 1.8 },
+                modulationEnvelope: { attack: 0.01, decay: 0.8, sustain: 0.2, release: 1.2 }
+            });
+        case 'Earth': // clean triangle bell — home, deliberately familiar
+            return new Tone.PolySynth(Tone.Synth, {
+                maxPolyphony: 5,
+                oscillator: { type: 'triangle' },
+                envelope: { attack: 0.01, decay: 0.6, sustain: 0.3, release: 1.0 }
+            });
+        case 'Venus': // warm, veiled AM haze
+            return new Tone.PolySynth(Tone.AMSynth, {
+                maxPolyphony: 5,
+                harmonicity: 1,
+                oscillator: { type: 'sine' },
+                modulation: { type: 'sine' },
+                envelope: { attack: 0.15, decay: 0.4, sustain: 0.5, release: 1.2 },
+                modulationEnvelope: { attack: 0.2, decay: 0.4, sustain: 0.4, release: 1.0 }
+            });
+        case 'Uranus': // cold glassy sine
+            return new Tone.PolySynth(Tone.Synth, {
+                maxPolyphony: 5,
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.005, decay: 0.5, sustain: 0.25, release: 1.5 }
+            });
+        case 'Neptune': // deep oceanic swell
+            return new Tone.PolySynth(Tone.AMSynth, {
+                maxPolyphony: 5,
+                harmonicity: 0.5,
+                oscillator: { type: 'sine' },
+                modulation: { type: 'sine' },
+                envelope: { attack: 0.4, decay: 0.5, sustain: 0.6, release: 1.8 },
+                modulationEnvelope: { attack: 0.5, decay: 0.5, sustain: 0.4, release: 1.4 }
+            });
+        case 'Mercury': // bright quick pluck — never plays longer than 1/2 note
+            return new Tone.PolySynth(Tone.Synth, {
+                maxPolyphony: 5,
+                oscillator: { type: 'square' },
+                envelope: { attack: 0.002, decay: 0.15, sustain: 0, release: 0.2 }
+            });
+        case 'Mars': // dry woody FM pluck — marimba-like, dusty
+            return new Tone.PolySynth(Tone.FMSynth, {
+                maxPolyphony: 5,
+                harmonicity: 2.5,
+                modulationIndex: 6,
+                oscillator: { type: 'sine' },
+                modulation: { type: 'sine' },
+                envelope: { attack: 0.002, decay: 0.12, sustain: 0, release: 0.15 },
+                modulationEnvelope: { attack: 0.002, decay: 0.08, sustain: 0, release: 0.1 }
+            });
+    }
+}
+
+
+const APP = {
+    scene: null,
+    camera: null,
+    renderer: null,
+    clock: null,
+    keys: {},
+    cameraYaw: 0,
+    moveSpeed: CONFIG.BASE_MOVE_SPEED,
+    bodies: [],            // { def, mesh, group, angle }
+    observer: {
+        state: 1.0,
+        level: 0,
+        region: 'Open Space'
+    },
+    audio: {
+        running: false,
+        initialised: false,
+        barCount: 0,
+        lastAppliedLevel: 0,
+        scheduleId: null,
+        voices: {}          // per-body: { synth, expression, sweep, widener, volume, seqIndex, busyUntilBar, level }
+    }
+};
+
+// Orbit mode state: null, or { bodyName, radius, angle }
+APP.orbit = null;
+
+// Stage 7 control state
+APP.masterOffset = 0;     // dB offset applied to master volume
+APP.orbitSpeedMult = 1;   // orbit speed multiplier
+APP.wellScale = 1;        // gravity well radius multiplier
+APP.wellRings = [];       // well ring meshes, for visual rescaling
+
+// Diagnostic: press T to toggle live note-timing logs for Mercury
+// and Mars — prints the scheduled gap between consecutive notes.
+APP.debugTiming = false;
+
+// ---------------- AUDIO ENGINE (Stage 4) ----------------
+
+// Build the master chain and one voice chain per body.
+// Chain: synth → expression gain → sweep filter → stereo widener
+//        → body volume → master compressor → limiter → destination
+function initAudio() {
+    Tone.Transport.bpm.value = AUDIO.BPM;
+    Tone.Transport.timeSignature = [4, 4];
+
+    // Final safety soft-clipper: transparent below -2dBFS, but any
+    // residual transient spike that beats the (lookahead-less) limiter
+    // is rounded smoothly into the ceiling instead of hard-clipping —
+    // stacked FM/pluck attack spikes become inaudible curvature
+    // rather than crackle.
+    const safetyClip = new Tone.WaveShaper((x) => {
+        const a = 0.8;
+        const ax = Math.abs(x);
+        if (ax <= a) return x;
+        return Math.sign(x) * (a + (1 - a) * Math.tanh((ax - a) / (1 - a)));
+    }, 2048).toDestination();
+    const limiter = new Tone.Limiter(AUDIO.LIMITER_DB).connect(safetyClip);
+    // Makeup gain: loudness restored AFTER compression so summed peaks
+    // (two near-field bodies + vigorous movement) no longer slam the
+    // limiter — the source of the remaining crackle.
+    const makeup = new Tone.Volume(AUDIO.MAKEUP_DB).connect(limiter);
+    const compressor = new Tone.Compressor(AUDIO.COMPRESSOR).connect(makeup);
+    // Sub-bass highpass: removes near-inaudible energy below ~38Hz
+    // (the Sun's octave-1 fundamentals) that was slamming the
+    // compressor/limiter and causing pumping and distortion.
+    const subFilter = new Tone.Filter({ type: 'highpass', frequency: 38, Q: 0.5 }).connect(compressor);
+    // Proximity crowd trim: eases the mix only when MULTIPLE bodies
+    // are simultaneously near-field (stacked transients), ramped
+    // continuously from updateSpatialAudio.
+    const proximityTrim = new Tone.Volume(0).connect(subFilter);
+    APP.audio.proximityTrim = proximityTrim;
+    const densityTrim = new Tone.Volume(0).connect(proximityTrim);
+    APP.audio.densityTrim = densityTrim;
+    const master = new Tone.Volume(AUDIO.MASTER_VOLUME + APP.masterOffset).connect(densityTrim);
+    APP.audio.master = master;
+
+    BODIES.forEach((def, index) => {
+        const synth = buildVoice(def.name);
+        const expression = new Tone.Gain(1);
+        const sweep = new Tone.Filter({ type: 'lowpass', frequency: 18000, Q: 0.6 });
+        const widener = new Tone.StereoWidener(0.5);
+        const panner = new Tone.Panner(0);
+        const volume = new Tone.Volume(BODY_TRIM[def.name]);
+
+        synth.chain(expression, sweep, widener, panner, volume, master);
+
+        APP.audio.voices[def.name] = {
+            def,
+            synth, expression, sweep, widener, panner, volume,
+            seqIndex: 0,
+            busyUntilBar: 0,
+            level: CONFIG.STATE_LEVELS[def.state.toFixed(1)],
+            staggerSec: (index * AUDIO.STAGGER_MS) / 1000,
+            currentRelease: RELEASES[def.name],
+            currentDecay: PLUCK_DECAYS[def.name] !== undefined ? PLUCK_DECAYS[def.name] : 0,
+            lastPan: 0
+        };
+    });
+
+    APP.audio.initialised = true;
+}
+
+// Compute a body's current bin against the observer
+function binFor(voice) {
+    return voice.level - APP.observer.level;
+}
+
+// Long-note expression: keeps whole notes and longer alive.
+// All automation scheduled against the precise transport time.
+function applyLongNoteExpression(voice, bars, time) {
+    const dur = bars * AUDIO.BAR_SECONDS;
+    const g = voice.expression.gain;
+    const f = voice.sweep.frequency;
+    const w = voice.widener.width;
+
+    // CLICK-FREE SPLICING: never step a sounding signal's gain or
+    // filter instantaneously. Release tails (the Sun's is ~1.4s)
+    // overlap note boundaries, so an instant setValueAtTime step at
+    // those moments is a waveform discontinuity — an audible click
+    // at every whole-note boundary. Instead: hold the current value
+    // at the boundary, ramp briefly into the curve's start, and ramp
+    // (never jump) back to neutral after the note ends.
+    holdParam(g, time);
+    holdParam(f, time);
+    holdParam(w, time);
+
+    if (bars === 1) {
+        // Whole note: slow swell then fade
+        g.linearRampToValueAtTime(0.65, time + 0.05);
+        g.linearRampToValueAtTime(1.0, time + dur * 0.45);
+        g.linearRampToValueAtTime(0.55, time + dur * 0.98);
+    } else if (bars === 2) {
+        // Double whole: volume movement + gentle filter sweep
+        g.linearRampToValueAtTime(0.7, time + 0.05);
+        g.linearRampToValueAtTime(1.0, time + dur * 0.35);
+        g.linearRampToValueAtTime(0.75, time + dur * 0.7);
+        g.linearRampToValueAtTime(0.55, time + dur * 0.98);
+        f.linearRampToValueAtTime(14000, time + 0.05);
+        f.exponentialRampToValueAtTime(2500, time + dur * 0.5);
+        f.exponentialRampToValueAtTime(14000, time + dur);
+    } else if (bars === 4) {
+        // Quadruple whole: slow timbral evolution, filter modulation,
+        // subtle stereo widening — time stretching, never pitch.
+        g.linearRampToValueAtTime(0.78, time + 0.05);
+        g.linearRampToValueAtTime(1.0, time + dur * 0.25);
+        g.linearRampToValueAtTime(0.82, time + dur * 0.5);
+        g.linearRampToValueAtTime(1.0, time + dur * 0.75);
+        g.linearRampToValueAtTime(0.6, time + dur * 0.98);
+        f.linearRampToValueAtTime(12000, time + 0.05);
+        f.exponentialRampToValueAtTime(3000, time + dur * 0.25);
+        f.exponentialRampToValueAtTime(9000, time + dur * 0.5);
+        f.exponentialRampToValueAtTime(2000, time + dur * 0.75);
+        f.exponentialRampToValueAtTime(12000, time + dur);
+        w.linearRampToValueAtTime(0.5, time + 0.05);
+        w.linearRampToValueAtTime(0.85, time + dur * 0.5);
+        w.linearRampToValueAtTime(0.5, time + dur);
+    }
+
+    // Glide back to neutral after the note ends — tails still sounding
+    g.linearRampToValueAtTime(1, time + dur + 0.15);
+    f.linearRampToValueAtTime(18000, time + dur + 0.15);
+    w.linearRampToValueAtTime(0.5, time + dur + 0.15);
+}
+
+// Hold a parameter's current value at `time` (click-free anchor for
+// subsequent ramps), with fallback for engines lacking cancelAndHold.
+function holdParam(p, time) {
+    if (typeof p.cancelAndHoldAtTime === 'function') {
+        p.cancelAndHoldAtTime(time);
+    } else {
+        p.cancelScheduledValues(time);
+    }
+}
+
+// Reset a voice's expression chain immediately (used on truncation)
+function resetExpression(voice, time) {
+    holdParam(voice.expression.gain, time);
+    holdParam(voice.sweep.frequency, time);
+    holdParam(voice.widener.width, time);
+    voice.expression.gain.linearRampToValueAtTime(1, time + 0.05);
+    voice.sweep.frequency.linearRampToValueAtTime(18000, time + 0.05);
+    voice.widener.width.linearRampToValueAtTime(0.5, time + 0.05);
+}
+
+// Schedule one body's notes for the bar beginning at `time`.
+function scheduleBodyBar(voice, time) {
+    const bin = binFor(voice);
+    const d = AUDIO.DURATIONS[String(bin)];
+    const barSec = AUDIO.BAR_SECONDS;
+    const octave = OCTAVES[voice.def.name];
+    const seq = SEQUENCES[voice.def.name];
+    const t0 = time + voice.staggerSec; // per-body onset stagger
+
+    // Dynamic release scaling — THE dropout fix. The lush default
+    // release tails are correct for long notes but stack past the
+    // polyphony ceiling at fast note rates, causing voice stealing
+    // (crackle) and dropped notes (silence). Cap the release so no
+    // more than ~2 tails ever overlap.
+    const interval = d.bars >= 1 ? barSec * Math.max(1, d.bars)
+                                 : barSec / d.notesPerBar;
+    // Voice-lifetime containment — the same-pitch flam fix. When a
+    // sequence repeats a pitch while that pitch's previous voice is
+    // still finishing (hold + release), the synth steals the voice
+    // mid-tail: an early, connected articulation heard as a flam.
+    // Cure: every voice fully completes before its pitch can recur.
+    // Plucks repeat pitches on ADJACENT slots (Mars), so their whole
+    // lifetime fits inside ONE slot; sustained sequences never repeat
+    // a pitch closer than two slots, so they fit within two.
+    const isPluck = PLUCK_DECAYS[voice.def.name] !== undefined;
+    const targetRelease = isPluck
+        ? Math.min(RELEASES[voice.def.name], interval * 0.45)
+        : Math.min(RELEASES[voice.def.name], interval * 0.8);
+    let needSet = Math.abs(targetRelease - voice.currentRelease) > 0.01;
+    const opts = { envelope: { release: targetRelease } };
+    if (isPluck) {
+        const targetDecay = Math.min(PLUCK_DECAYS[voice.def.name], interval * 0.5);
+        if (Math.abs(targetDecay - voice.currentDecay) > 0.005) needSet = true;
+        opts.envelope.decay = targetDecay;
+        voice.currentDecay = targetDecay;
+    }
+    if (HAS_MOD_ENV[voice.def.name]) {
+        opts.modulationEnvelope = { release: targetRelease };
+    }
+    if (needSet) {
+        voice.synth.set(opts);
+        voice.currentRelease = targetRelease;
+    }
+
+    // Held duration: plucks release almost immediately (their decay
+    // carries the sound); sustained voices hold most of the slot.
+    const holdSec = isPluck
+        ? interval * 0.4
+        : interval * 0.85;
+
+    // Grid guard: notes are only triggered at times the audio context
+    // can still honour. Tone.immediate() is raw context time (no
+    // lookahead). Anything earlier has elapsed and is skipped — its
+    // sequence position still advances, preserving identity-in-time.
+    const guard = Tone.immediate() + 0.01;
+
+    if (d.bars >= 2) {
+        // Multi-bar note: trigger one note, mark the voice busy.
+        // Long notes trigger fractionally late rather than vanish —
+        // losing the Sun for 4 bars would be worse than a soft late
+        // onset on an already-slow attack.
+        const note = seq[voice.seqIndex] + octave;
+        voice.seqIndex = (voice.seqIndex + 1) % 16;
+        const tNote = Math.max(t0, guard);
+        voice.synth.triggerAttackRelease(note, AUDIO.BAR_SECONDS * d.bars, tNote);
+        applyLongNoteExpression(voice, d.bars, tNote);
+        voice.busyUntilBar = APP.audio.barCount + d.bars;
+    } else {
+        // Notes fit within (or exactly fill) the bar — every note
+        // stays on its exact grid slot or is skipped entirely.
+        const step = barSec / d.notesPerBar;
+        for (let i = 0; i < d.notesPerBar; i++) {
+            const note = seq[voice.seqIndex] + octave;
+            voice.seqIndex = (voice.seqIndex + 1) % 16;
+            const tNote = t0 + i * step;
+            if (tNote >= guard) {
+                voice.synth.triggerAttackRelease(note, holdSec, tNote);
+                if (APP.debugTiming &&
+                    (voice.def.name === 'Mercury' || voice.def.name === 'Mars')) {
+                    if (voice.lastDebugT !== undefined) {
+                        console.log(voice.def.name + ' \u0394 ' +
+                            ((tNote - voice.lastDebugT) * 1000).toFixed(1) + 'ms (' + note + ')');
+                    }
+                    voice.lastDebugT = tNote;
+                }
+            }
+        }
+        if (d.bars === 1) applyLongNoteExpression(voice, 1, Math.max(t0, guard));
+        voice.busyUntilBar = APP.audio.barCount + 1;
+    }
+}
+
+// The bar scheduler — the heartbeat of Chronosphere.
+// Fires at every bar line with sample-accurate transport time.
+// Observer state changes latch here: when the level has changed,
+// every body re-times at once — the universe shifts in unison.
+function onBar(time) {
+    // Late-callback policy: THE GRID IS SACRED. If a stall ever
+    // exceeds the full-bar horizon + lookahead (~2.2s), the bar is
+    // never shifted — shifting smears rhythm, and note duration is
+    // this project's information channel. Instead, scheduleBodyBar
+    // keeps every note on its exact grid slot and skips any whose
+    // moment has already passed. A rare missing note is graceful;
+    // a displaced bar is broken.
+    const lateBy = Tone.immediate() - time;
+    if (lateBy > 0) {
+        const nowMs = performance.now();
+        if (!APP.audio.lastLateWarn || nowMs - APP.audio.lastLateWarn > 5000) {
+            APP.audio.lastLateWarn = nowMs;
+            console.warn(`Hear Time: bar callback late by ${(lateBy * 1000).toFixed(0)}ms — holding grid, skipping elapsed notes`);
+        }
+        // SELF-HEAL: a backlog beyond 3/4 bar means the transport has
+        // fallen behind the audio clock and (as observed) may never
+        // recover on its own — lateness compounds, the grid-skip
+        // policy silences body after body. Resynchronise: re-anchor
+        // the whole transport to the audio clock within ~one bar.
+        if (lateBy > AUDIO.BAR_SECONDS * 0.75) {
+            requestResync();
+            return;
+        }
+    }
+
+    const bar = APP.audio.barCount;
+    const levelChanged = APP.observer.level !== APP.audio.lastAppliedLevel;
+
+    if (levelChanged) {
+        APP.audio.lastAppliedLevel = APP.observer.level;
+    }
+
+    Object.values(APP.audio.voices).forEach(voice => {
+        if (levelChanged) {
+            // Truncate any long note in flight: smooth release, advance
+            // to the next note in the sequence at the new duration.
+            if (voice.busyUntilBar > bar) {
+                voice.synth.releaseAll(time);
+                resetExpression(voice, time);
+            }
+            voice.busyUntilBar = bar; // free the voice
+            scheduleBodyBar(voice, time);
+        } else {
+            // No state change: schedule only if not mid-long-note
+            if (voice.busyUntilBar <= bar) {
+                scheduleBodyBar(voice, time);
+            }
+        }
+    });
+
+    // Voice-density fader ride: trim the master feed for the coming
+    // bar according to its total note density, ramped at the bar line.
+    let density = 0;
+    Object.values(APP.audio.voices).forEach(voice => {
+        const d = AUDIO.DURATIONS[String(binFor(voice))];
+        density += d.notesPerBar > 0 ? d.notesPerBar : 1 / d.bars;
+    });
+    let reduction = 0;
+    if (density > AUDIO.DENSITY.BASELINE) {
+        reduction = -Math.min(AUDIO.DENSITY.MAX_DB,
+            AUDIO.DENSITY.COEFF * Math.log2(density / AUDIO.DENSITY.BASELINE));
+    }
+    APP.audio.densityTrim.volume.rampTo(reduction, 0.3, time);
+
+    APP.audio.barCount++;
+    if (levelChanged) updateBinReadout();
+}
+
+// Scheduling horizon: bar callbacks fire a FULL BAR EARLY and target
+// the upcoming barline — stall tolerance ~2.2s including lookahead.
+// Bars 0 and 1 are scheduled at transport start (in strict order) so
+// there is no silent opening; the repeat covers bars 2 onward.
+function scheduleBars() {
+    Tone.Transport.bpm.value = AUDIO.BPM; // defensive, post-setContext
+    const fullBar = AUDIO.BAR_SECONDS;
+    APP.audio.startId = Tone.Transport.scheduleOnce((t) => onBar(t), 0);
+    APP.audio.start2Id = Tone.Transport.scheduleOnce((t) => onBar(t + fullBar), 0);
+    APP.audio.scheduleId = Tone.Transport.scheduleRepeat(
+        (t) => onBar(t + fullBar), fullBar, fullBar);
+}
+
+// SELF-HEALING RESYNC: tear the transport down and re-anchor it to
+// the audio clock. Sequence positions are preserved (identity-in-time
+// continues); only the scheduling machinery is rebuilt. Deferred out
+// of the transport callback for safety.
+function requestResync() {
+    if (APP.audio.resyncPending) return;
+    APP.audio.resyncPending = true;
+    console.warn('Hear Time: scheduler backlog beyond recovery — resynchronising transport');
+    setTimeout(() => {
+        if (!APP.audio.running) { APP.audio.resyncPending = false; return; }
+        Tone.Transport.stop();
+        Tone.Transport.cancel();
+        const now = Tone.now();
+        Object.values(APP.audio.voices).forEach(v => {
+            v.synth.releaseAll(now);
+            resetExpression(v, now);
+            v.busyUntilBar = 0;
+        });
+        APP.audio.barCount = 0;
+        APP.audio.lastAppliedLevel = APP.observer.level;
+        scheduleBars();
+        Tone.Transport.start(Tone.now() + 0.05); // explicit future anchor:
+    // restarts otherwise anchor bar 0 in the past, making the first
+    // bars compute as ~750ms late
+        APP.audio.resyncPending = false;
+    }, 50);
+}
+
+// Start audio (requires user gesture)
+async function startAudio() {
+    if (APP.audio.running) return;
+
+    if (!APP.audio.initialised) {
+        // Wrap a RAW AudioContext with playback latency (large,
+        // underrun-resistant buffers). Created inside this click
+        // gesture so the browser starts it in the 'running' state —
+        // constructing via new Tone.Context() left it suspended,
+        // freezing the audio clock while the scheduler kept queueing,
+        // which jammed voice pools body by body.
+        Tone.setContext(new AudioContext({ latencyHint: 'playback' }));
+        Tone.context.lookAhead = AUDIO.LOOKAHEAD;
+        Tone.context.updateInterval = AUDIO.UPDATE_INTERVAL;
+    }
+
+    await Tone.start();
+    // Belt and braces: verify the context is actually running
+    if (Tone.context.state !== 'running') {
+        await Tone.context.resume();
+    }
+
+    if (!APP.audio.initialised) initAudio();
+
+    APP.audio.barCount = 0;
+    APP.audio.lastAppliedLevel = APP.observer.level;
+    Object.values(APP.audio.voices).forEach(v => {
+        v.seqIndex = 0;
+        v.busyUntilBar = 0;
+    });
+
+    scheduleBars();
+    Tone.Transport.start(Tone.now() + 0.05); // explicit future anchor:
+    // restarts otherwise anchor bar 0 in the past, making the first
+    // bars compute as ~750ms late
+    APP.audio.running = true;
+    updateBinReadout();
+
+    const btn = document.getElementById('startBtn');
+    btn.classList.add('active');
+    btn.textContent = '⏸ Audio Running';
+}
+
+// Stop audio
+function stopAudio() {
+    if (!APP.audio.running) return;
+    APP.audio.running = false;
+
+    if (APP.audio.scheduleId !== null) {
+        Tone.Transport.clear(APP.audio.scheduleId);
+        APP.audio.scheduleId = null;
+    }
+    if (APP.audio.startId !== undefined && APP.audio.startId !== null) {
+        APP.audio.startId = null;
+    }
+    Tone.Transport.stop();
+    Tone.Transport.cancel();
+
+    const now = Tone.now();
+    Object.values(APP.audio.voices).forEach(v => {
+        v.synth.releaseAll(now);
+        resetExpression(v, now);
+        v.busyUntilBar = 0;
+    });
+
+    const btn = document.getElementById('startBtn');
+    btn.classList.remove('active');
+    btn.textContent = '▶ Start Audio';
+    updateBinReadout();
+}
+
+// ---------------- SPATIAL AUDIO (Stage 5) ----------------
+// Manual pan + volume per body. Pan derives from the observer's
+// viewing direction: ahead = centre, left = pan left, right = pan
+// right. Volume derives from distance with curved rolloff and a hard
+// minimum floor so no body ever falls silent.
+//
+// Updates are THROTTLED (~11×/sec) and applied via rampTo so the
+// audio params glide continuously between targets — per-frame value
+// stepping caused zipper noise (granular crackle) on sustained tones.
+function updateSpatialAudio() {
+    if (!APP.audio.running) return;
+
+    const now = performance.now();
+    if (APP.audio.lastSpatialUpdate &&
+        now - APP.audio.lastSpatialUpdate < AUDIO.SPATIAL.UPDATE_MS) return;
+    APP.audio.lastSpatialUpdate = now;
+
+    const camX = APP.camera.position.x;
+    const camZ = APP.camera.position.z;
+    const yaw = APP.cameraYaw;
+
+    // Observer's right vector in the orbital plane
+    const rightX = Math.cos(yaw);
+    const rightZ = -Math.sin(yaw);
+
+    const floorDist = CONFIG.BOUNDARY_RADIUS * AUDIO.SPATIAL.FLOOR_FRACTION;
+    const near = AUDIO.SPATIAL.NEAR_DIST;
+    const ramp = AUDIO.SPATIAL.RAMP_SEC;
+    let crowdLoad = 0;
+
+    if (!APP._bodyMap) {
+        APP._bodyMap = {};
+        APP.bodies.forEach(b => { APP._bodyMap[b.def.name] = b; });
+    }
+
+    Object.values(APP.audio.voices).forEach(voice => {
+        const body = APP._bodyMap[voice.def.name];
+        if (!body) return;
+
+        const dx = body.group.position.x - camX;
+        const dz = body.group.position.z - camZ;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+
+        // Accumulate near-field crowding (1.0 at zero distance,
+        // fading to 0 at the crowd radius)
+        crowdLoad += Math.max(0, 1 - dist / AUDIO.SPATIAL.CROWD_RADIUS);
+
+        // --- Pan: rightward component of the unit bearing,
+        //     slew-limited so the image glides rather than leaps ---
+        let targetPan = 0;
+        if (dist > 0.001) {
+            targetPan = (dx * rightX + dz * rightZ) / dist;
+            targetPan = Math.max(-1, Math.min(1, targetPan));
+        }
+        const slew = AUDIO.SPATIAL.PAN_SLEW;
+        targetPan = voice.lastPan +
+            Math.max(-slew, Math.min(slew, targetPan - voice.lastPan));
+        voice.lastPan = targetPan;
+
+        // --- Volume: curved rolloff to the floor, then constant.
+        // CURVE < 1 makes attenuation fall faster near-field, so
+        // approaching a body produces a dramatic, legible swell.
+        const k = Math.max(0, Math.min(1, (dist - near) / (floorDist - near)));
+        const atten = Math.pow(k, AUDIO.SPATIAL.CURVE) * AUDIO.SPATIAL.MAX_ATTEN_DB
+                      * ATTEN_SCALE[voice.def.name];
+        let targetVol = BODY_TRIM[voice.def.name] + atten;
+
+        // Near-field trim: close-range-only reduction
+        const nt = NEAR_TRIM[voice.def.name];
+        if (nt) {
+            targetVol += nt * Math.max(0, 1 - dist / NEAR_TRIM_RADIUS);
+        }
+
+        // Mercury presence boost in the Sun's deepest well only: at
+        // bin -3 its pluck decay is tightly capped (no collisions),
+        // so each 16th note carries less energy. Balance elsewhere
+        // is approved and untouched.
+        if (voice.def.name === 'Mercury' && APP.observer.level === 3) {
+            targetVol += 3;
+        }
+
+        // --- Ramped automation: smooth glide, no steps ---
+        voice.panner.pan.rampTo(targetPan, ramp);
+        voice.volume.volume.rampTo(targetVol, ramp);
+    });
+
+    // Proximity crowd trim: 0dB for one near body, easing down as
+    // additional bodies crowd the near-field simultaneously
+    const crowdTrim = -Math.min(AUDIO.SPATIAL.CROWD_MAX_DB,
+        AUDIO.SPATIAL.CROWD_DB_PER_EXTRA * Math.max(0, crowdLoad - 1));
+    APP.audio.proximityTrim.volume.rampTo(crowdTrim, 0.2);
+}
+
+
+
+
+function updateBinReadout() {
+    BODIES.forEach(def => {
+        const el = document.getElementById(`bodyDur-${def.name}`);
+        if (!el) return;
+        if (!APP.audio.running) {
+            el.textContent = '—';
+            return;
+        }
+        const level = CONFIG.STATE_LEVELS[def.state.toFixed(1)];
+        const bin = level - APP.audio.lastAppliedLevel;
+        const d = AUDIO.DURATIONS[String(bin)];
+        el.textContent = `${bin > 0 ? '+' + bin : bin} · ${d.label}`;
+    });
+}
+
+
+function initThree() {
+    APP.scene = new THREE.Scene();
+    APP.scene.background = new THREE.Color(0x0d0d1a);
+
+    APP.camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 3000);
+    APP.camera.rotation.order = 'YXZ';
+    APP.camera.position.set(0, CONFIG.CAMERA_HEIGHT, CONFIG.CAMERA_START_Z);
+    APP.camera.rotation.x = CONFIG.CAMERA_PITCH_DEG * Math.PI / 180;
+
+    APP.renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+    // Cap pixel ratio: full retina resolution + antialiasing is heavy
+    // GPU/CPU load that competes with the audio thread during vigorous
+    // movement. Visually near-identical, markedly cheaper.
+    APP.renderer.setPixelRatio(1.0);
+    APP.renderer.setSize(window.innerWidth, window.innerHeight);
+
+    APP.clock = new THREE.Clock();
+
+    // Soft lighting (bodies use basic materials, but keep light for any future meshes)
+    const ambient = new THREE.AmbientLight(0x404060);
+    APP.scene.add(ambient);
+}
+
+// ---------------- STARFIELD ----------------
+function createStarfield() {
+    const positions = [];
+    for (let i = 0; i < CONFIG.STAR_COUNT; i++) {
+        // Random point on a large sphere shell
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(2 * Math.random() - 1);
+        const r = CONFIG.STAR_SHELL_RADIUS * (0.85 + Math.random() * 0.3);
+        positions.push(
+            r * Math.sin(phi) * Math.cos(theta),
+            r * Math.cos(phi),
+            r * Math.sin(phi) * Math.sin(theta)
+        );
+    }
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    const mat = new THREE.PointsMaterial({
+        color: 0xd4d4ea,
+        size: 1.8,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.95
+    });
+    APP.scene.add(new THREE.Points(geom, mat));
+}
+
+// ---------------- ORBIT PATHS ----------------
+function createOrbitPath(radius) {
+    const points = [];
+    for (let i = 0; i <= 128; i++) {
+        const a = (i / 128) * Math.PI * 2;
+        points.push(new THREE.Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius));
+    }
+    const geom = new THREE.BufferGeometry().setFromPoints(points);
+    const mat = new THREE.LineBasicMaterial({ color: 0x4c6ef5, transparent: true, opacity: 0.18 });
+    return new THREE.Line(geom, mat);
+}
+
+// ---------------- GRAVITY WELL RINGS ----------------
+function createWellRing(radius, state) {
+    const points = [];
+    for (let i = 0; i <= CONFIG.WELL_SEGMENTS; i++) {
+        const a = (i / CONFIG.WELL_SEGMENTS) * Math.PI * 2;
+        points.push(new THREE.Vector3(Math.cos(a) * radius, 0.05, Math.sin(a) * radius));
+    }
+    const geom = new THREE.BufferGeometry().setFromPoints(points);
+    const mat = new THREE.LineBasicMaterial({
+        color: CONFIG.WELL_COLORS[state],
+        transparent: true,
+        opacity: CONFIG.WELL_OPACITY
+    });
+    return new THREE.Line(geom, mat);
+}
+
+// ---------------- CELESTIAL BODIES ----------------
+function createBodies() {
+    BODIES.forEach(def => {
+        // Group holds the body sphere + its well rings, moved together each frame
+        const group = new THREE.Group();
+
+        // Solid sphere
+        const sphereGeom = new THREE.SphereGeometry(def.radius, 24, 18);
+        const sphereMat = new THREE.MeshBasicMaterial({ color: def.color });
+        const sphere = new THREE.Mesh(sphereGeom, sphereMat);
+        group.add(sphere);
+
+        // Subtle wireframe overlay — the family aesthetic
+        const wireGeom = new THREE.SphereGeometry(def.radius * 1.02, 12, 9);
+        const wire = new THREE.LineSegments(
+            new THREE.WireframeGeometry(wireGeom),
+            new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.12 })
+        );
+        group.add(wire);
+
+        // Saturn's ring
+        if (def.name === 'Saturn') {
+            const ringGeom = new THREE.RingGeometry(def.radius * 1.4, def.radius * 2.2, 48);
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: 0xcbb98a, side: THREE.DoubleSide, transparent: true, opacity: 0.45
+            });
+            const ring = new THREE.Mesh(ringGeom, ringMat);
+            ring.rotation.x = -Math.PI / 2 + 0.18;
+            group.add(ring);
+        }
+
+        // Gravity well rings travel with the body
+        def.wells.forEach(w => {
+            const ring = createWellRing(w.radius, w.state);
+            group.add(ring);
+            APP.wellRings.push(ring);
+        });
+
+        // Random starting angle so planets are scattered, not aligned
+        const angle = def.orbitRadius > 0 ? Math.random() * Math.PI * 2 : 0;
+        group.position.set(
+            Math.cos(angle) * def.orbitRadius,
+            0,
+            Math.sin(angle) * def.orbitRadius
+        );
+        APP.scene.add(group);
+
+        // Static orbit path
+        if (def.orbitRadius > 0) {
+            APP.scene.add(createOrbitPath(def.orbitRadius));
+        }
+
+        APP.bodies.push({ def, group, angle });
+    });
+}
+
+// ---------------- UI: BODY LIST ----------------
+function buildBodyList() {
+    const list = document.getElementById('bodyList');
+    const html = BODIES.map(def => {
+        const hex = '#' + def.color.toString(16).padStart(6, '0');
+        return `<div class="body-row" id="bodyRow-${def.name}">
+            <span class="body-dot" style="background:${hex}"></span>
+            <span class="body-name">${def.name}</span>
+            <span class="body-state">${def.state.toFixed(1)}</span>
+            <span class="body-dur" id="bodyDur-${def.name}">—</span>
+        </div>`;
+    }).join('');
+    list.innerHTML = html;
+}
+
+// ---------------- INPUT ----------------
+// Engage or release orbit mode
+function toggleOrbit() {
+    if (APP.orbit) {
+        APP.orbit = null;
+        return;
+    }
+    const name = APP.observer.bodyName;
+    if (!name) return;
+    const body = APP.bodies.find(b => b.def.name === name);
+    if (!body) return;
+    const dx = APP.camera.position.x - body.group.position.x;
+    const dz = APP.camera.position.z - body.group.position.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    APP.orbit = {
+        bodyName: name,
+        radius: Math.max(body.def.radius + CONFIG.ORBIT_MIN_CLEARANCE, dist),
+        angle: Math.atan2(dz, dx),
+        yawOffset: 0
+    };
+}
+
+document.addEventListener('keydown', (e) => {
+    APP.keys[e.key.toLowerCase()] = true;
+    if (e.key.startsWith('Arrow')) e.preventDefault();
+    if (e.key === ' ') {
+        e.preventDefault();
+        if (!e.repeat) toggleOrbit();
+    }
+    if (e.key.toLowerCase() === 't' && !e.repeat) {
+        APP.debugTiming = !APP.debugTiming;
+        console.log('Hear Time note-timing log: ' + (APP.debugTiming ? 'ON' : 'OFF'));
+    }
+});
+document.addEventListener('keyup', (e) => {
+    APP.keys[e.key.toLowerCase()] = false;
+});
+
+document.getElementById('speedSlider').addEventListener('input', (e) => {
+    APP.moveSpeed = parseFloat(e.target.value);
+    document.getElementById('speedLabel').textContent = APP.moveSpeed;
+});
+
+document.getElementById('masterVolSlider').addEventListener('input', (e) => {
+    APP.masterOffset = parseFloat(e.target.value);
+    document.getElementById('masterVolLabel').textContent = APP.masterOffset;
+    if (APP.audio.master) {
+        APP.audio.master.volume.value = AUDIO.MASTER_VOLUME + APP.masterOffset;
+    }
+});
+
+document.getElementById('orbitSpeedSlider').addEventListener('input', (e) => {
+    const pct = parseFloat(e.target.value);
+    APP.orbitSpeedMult = pct / 100;
+    document.getElementById('orbitSpeedLabel').textContent = pct;
+});
+
+// Insurance: if the browser ever suspends the audio context (e.g. on
+// tab switches), resume it on the next user interaction.
+document.addEventListener('pointerdown', () => {
+    if (APP.audio.initialised && Tone.context.state !== 'running') {
+        Tone.context.resume();
+    }
+});
+document.addEventListener('keydown', () => {
+    if (APP.audio.initialised && Tone.context.state !== 'running') {
+        Tone.context.resume();
+    }
+});
+
+// ---------------- NAVIGATION (Stage 2) ----------------
+function updateCamera(dt) {
+    // Orbit mode: slow automatic circle around the selected body,
+    // auto-facing it. Any movement input steers out of orbit.
+    if (APP.orbit) {
+        if (APP.keys['w'] || APP.keys['s'] || APP.keys['a'] || APP.keys['d']) {
+            APP.orbit = null;
+        } else {
+            // ←/→ look around without detaching: an offset from the
+            // auto-facing direction, held steady as you circle
+            if (APP.keys['arrowleft'])  APP.orbit.yawOffset += CONFIG.TURN_SPEED * dt;
+            if (APP.keys['arrowright']) APP.orbit.yawOffset -= CONFIG.TURN_SPEED * dt;
+
+            const body = APP.bodies.find(b => b.def.name === APP.orbit.bodyName);
+            if (!body) {
+                APP.orbit = null;
+            } else {
+                APP.orbit.angle += CONFIG.ORBIT_VIEW_SPEED * dt;
+                const bx = body.group.position.x;
+                const bz = body.group.position.z;
+                APP.camera.position.x = bx + Math.cos(APP.orbit.angle) * APP.orbit.radius;
+                APP.camera.position.z = bz + Math.sin(APP.orbit.angle) * APP.orbit.radius;
+                APP.camera.position.y = CONFIG.CAMERA_HEIGHT;
+                // Face the body: forward vector is (-sin yaw, -cos yaw)
+                const dx = bx - APP.camera.position.x;
+                const dz = bz - APP.camera.position.z;
+                APP.cameraYaw = Math.atan2(-dx, -dz) + APP.orbit.yawOffset;
+                APP.camera.rotation.y = APP.cameraYaw;
+                APP.camera.rotation.x = CONFIG.CAMERA_PITCH_DEG * Math.PI / 180;
+
+                document.getElementById('position').textContent =
+                    `X:${APP.camera.position.x.toFixed(0)} Z:${APP.camera.position.z.toFixed(0)}`;
+                return;
+            }
+        }
+    }
+
+    // ←/→ = turn (smooth yaw)
+    if (APP.keys['arrowleft'])  APP.cameraYaw += CONFIG.TURN_SPEED * dt;
+    if (APP.keys['arrowright']) APP.cameraYaw -= CONFIG.TURN_SPEED * dt;
+
+    APP.camera.rotation.y = APP.cameraYaw;
+    APP.camera.rotation.x = CONFIG.CAMERA_PITCH_DEG * Math.PI / 180; // pitch held fixed
+
+    const speed = APP.moveSpeed * (APP.keys['shift'] ? CONFIG.FAST_MULTIPLIER : 1) * dt;
+
+    // Forward vector projected onto the orbital plane
+    const forward = new THREE.Vector3(-Math.sin(APP.cameraYaw), 0, -Math.cos(APP.cameraYaw));
+    // Right vector in the plane
+    const right = new THREE.Vector3(Math.cos(APP.cameraYaw), 0, -Math.sin(APP.cameraYaw));
+
+    if (APP.keys['w']) APP.camera.position.addScaledVector(forward, speed);
+    if (APP.keys['s']) APP.camera.position.addScaledVector(forward, -speed);
+    if (APP.keys['a']) APP.camera.position.addScaledVector(right, -speed);
+    if (APP.keys['d']) APP.camera.position.addScaledVector(right, speed);
+
+    // Hold to the plane
+    APP.camera.position.y = CONFIG.CAMERA_HEIGHT;
+
+    // World boundary: clamp horizontal distance from origin
+    const hx = APP.camera.position.x, hz = APP.camera.position.z;
+    const dist = Math.sqrt(hx * hx + hz * hz);
+    if (dist > CONFIG.BOUNDARY_RADIUS) {
+        const k = CONFIG.BOUNDARY_RADIUS / dist;
+        APP.camera.position.x *= k;
+        APP.camera.position.z *= k;
+    }
+
+    // Status readouts
+    document.getElementById('position').textContent =
+        `X:${APP.camera.position.x.toFixed(0)} Z:${APP.camera.position.z.toFixed(0)}`;
+}
+
+// ---------------- ORBITAL MOTION (Stage 1) ----------------
+function updateOrbits(dt) {
+    APP.bodies.forEach(b => {
+        if (b.def.orbitRadius === 0) return;
+        b.angle += b.def.orbitSpeed * APP.orbitSpeedMult * dt;
+        b.group.position.x = Math.cos(b.angle) * b.def.orbitRadius;
+        b.group.position.z = Math.sin(b.angle) * b.def.orbitRadius;
+    });
+}
+
+// ---------------- OBSERVER STATE (Stage 3) ----------------
+// Strongest active well (lowest state value) wins. Distances are
+// measured in the orbital plane (XZ) since the world is planar.
+function updateObserverState() {
+    let strongest = { state: 1.0, region: 'Open Space', bodyName: null };
+
+    const camX = APP.camera.position.x;
+    const camZ = APP.camera.position.z;
+
+    APP.bodies.forEach(b => {
+        if (b.def.wells.length === 0) return;
+        const dx = camX - b.group.position.x;
+        const dz = camZ - b.group.position.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+
+        // wells are ordered outer→inner; the innermost containing well
+        // is this body's contribution
+        let contribution = null;
+        b.def.wells.forEach(w => {
+            if (dist <= w.radius * APP.wellScale) contribution = w;
+        });
+
+        if (contribution && contribution.state < strongest.state) {
+            const tierNames = { 0.8: 'outer well', 0.4: 'inner well', 0.2: 'core well' };
+            // Sun has three tiers; rename its middle tier for clarity
+            let tier = tierNames[contribution.state];
+            if (b.def.name === 'Sun') {
+                tier = { 0.8: 'outer well', 0.4: 'middle well', 0.2: 'inner well' }[contribution.state];
+            }
+            strongest = {
+                state: contribution.state,
+                region: `${b.def.name} — ${tier}`,
+                bodyName: b.def.name
+            };
+        }
+    });
+
+    // Vicinity labelling: if no well claims the observer (state 1.0),
+    // but they're close to a well-less body (Mercury, Mars), name that
+    // body in the region readout. State remains 1.0 — label only.
+    if (strongest.state === 1.0) {
+        let nearestVicinity = null;
+        let nearestDist = Infinity;
+        APP.bodies.forEach(b => {
+            if (b.def.wells.length > 0) return;
+            const dx = camX - b.group.position.x;
+            const dz = camZ - b.group.position.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist <= CONFIG.VICINITY_RADIUS && dist < nearestDist) {
+                nearestDist = dist;
+                nearestVicinity = b.def.name;
+            }
+        });
+        if (nearestVicinity) {
+            strongest.region = nearestVicinity;
+            strongest.bodyName = nearestVicinity;
+        }
+    }
+
+    const level = CONFIG.STATE_LEVELS[strongest.state.toFixed(1)];
+    const changed = strongest.state !== APP.observer.state || strongest.region !== APP.observer.region;
+
+    APP.observer.state = strongest.state;
+    APP.observer.level = level;
+    APP.observer.region = strongest.region;
+    APP.observer.bodyName = strongest.bodyName;
+
+    if (changed) {
+        const stateEl = document.getElementById('observerState');
+        stateEl.textContent = strongest.state.toFixed(1);
+        stateEl.style.color = CONFIG.STATE_DISPLAY_COLORS[strongest.state];
+        document.getElementById('observerRegion').textContent = strongest.region;
+        document.getElementById('observerLevel').textContent = `Level ${level}`;
+    }
+
+    // Orbit hint
+    let hint = '';
+    if (APP.orbit) hint = `Orbiting ${APP.orbit.bodyName} — SPACE to detach`;
+    else if (APP.observer.bodyName) hint = `Press SPACE to orbit ${APP.observer.bodyName}`;
+    if (hint !== APP._hintCache) {
+        APP._hintCache = hint;
+        const hintEl = document.getElementById('orbitHint');
+        hintEl.textContent = hint;
+        hintEl.style.display = hint ? 'block' : 'none';
+    }
+}
+
+// ---------------- MAIN LOOP ----------------
+function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(APP.clock.getDelta(), 0.1); // clamp to avoid jumps on tab refocus
+
+    updateCamera(dt);
+    updateOrbits(dt);
+    updateObserverState();
+    updateSpatialAudio();
+
+    APP.renderer.render(APP.scene, APP.camera);
+}
+
+// ---------------- RESIZE ----------------
+window.addEventListener('resize', () => {
+    APP.camera.aspect = window.innerWidth / window.innerHeight;
+    APP.camera.updateProjectionMatrix();
+    APP.renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ---------------- INITIALISE ----------------
+initThree();
+createStarfield();
+createBodies();
+buildBodyList();
+animate();
+    </script>
+</body>
+</html>
